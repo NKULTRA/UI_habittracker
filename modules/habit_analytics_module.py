@@ -10,7 +10,4 @@ habit_analytics_ui = ui.page_fluid(
 )
 
 def habit_analytics_server(input, output, session):
-    @output
-    @render.text
-    def greeting():
-        return "Hello from server"
+    pass

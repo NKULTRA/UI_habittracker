@@ -11,7 +11,4 @@ home_screen_ui = ui.page_fluid(
 )
 
 def home_screen_server(input, output, session):
-    @output
-    @render.text
-    def greeting():
-        return "Hello from server"
+    pass

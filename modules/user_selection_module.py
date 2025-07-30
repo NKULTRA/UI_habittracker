@@ -12,7 +12,4 @@ user_selection_ui = ui.page_fluid(
 )
 
 def user_selection_server(input, output, session):
-    @output
-    @render.text
-    def greeting():
-        return "Hello from server"
+    pass
