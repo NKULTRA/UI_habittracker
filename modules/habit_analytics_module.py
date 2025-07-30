@@ -1,3 +1,7 @@
+"""
+Module creates the Analyze Habits Screen
+after the user clicks the button on the home screen
+"""
 
 
 habit_analytics_ui = ui.page_fluid(

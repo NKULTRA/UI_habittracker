@@ -1,3 +1,8 @@
+"""
+Module creates the Edit Habits Screen 
+after the user clicks the button on the home screen
+"""
+
 
 
 edit_habits_ui = ui.page_fluid(

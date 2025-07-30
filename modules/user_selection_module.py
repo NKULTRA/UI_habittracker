@@ -1,3 +1,7 @@
+"""
+Module creates the first page of the application
+The user selection screen
+"""
 
 
 user_selection_ui = ui.page_fluid(

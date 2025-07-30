@@ -1,3 +1,8 @@
+"""
+Module creates the page after the login
+The home screen
+"""
+
 
 
 home_screen_ui = ui.page_fluid(
