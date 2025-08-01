@@ -5,10 +5,14 @@ The home screen
 from shiny import ui, render
 
 
-home_screen_ui = ui.page_fluid(
-    ui.h2("My modular shiny app"),
-    ui.output_text("greeting")
+def home_screen_ui():
+    return ui.page_fluid(
+        ui.h2("My modular shiny app"),
+        ui.output_text("greeting")
 )
 
 def home_screen_server(input, output, session):
-    pass
+    @output
+    @render.text
+    def greeting():
+        return "Welcome to your habit tracker"

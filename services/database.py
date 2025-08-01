@@ -111,7 +111,7 @@ def archive_entry(user_id, habit_name):
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE habits 
-        SET IsActive = 1
+        SET IsActive = 0
         WHERE userID = ? AND HabitName = ?
     """, (user_id, habit_name))
 
@@ -149,23 +149,119 @@ def edit_entry(user_id, habit_id, updates):
 
 
 def get_longest_streak():
-    pass
+    """
+    Get the longest streak of all habits,
+    archived or active
+    """
+    conn = sqlite3.connect("habittracker.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        WITH streaks AS(
+            SELECT a.habitID,
+                   DATE(a.ActivityDate) AS act_date,
+                   LAG(a.ActivityDate) OVER(ORDER BY act_date) AS one_act_before 
+                   )
+    """)
+
+    conn.close()
 
 
-def get_longest_streak(habit_id):
-    pass
+
+def get_longest_streak(user_id, habit_id):
+    """
+    Get the longest streak of a particular habits,
+    chosen by the user
+
+    Parameters:
+    - user_id: integer, ID of the current user
+    - habit_id: integer, ID of the habit
+    """
+    conn = sqlite3.connect("habittracker.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+
+    """)
+
+    conn.commit()
+    conn.close()
 
 
-def get_active_habits():
-    pass
+def get_active_habits(user_id):
+    """
+    Get all active habits of the current user
+
+    Parameters:
+    - user_id: integer, ID of the current user
+    """
+    conn = sqlite3.connect("habittracker.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            HabitName
+        FROM
+            habits
+        WHERE
+            userID = ? AND
+            IsActive = 1
+    """(user_id))
+
+    results = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
+    return results
 
 
-def get_habits_with_same_period():
-    pass
+def get_habits_with_same_period(user_id, period):
+    """
+    Get all active habits with the same period from the
+    current user
+
+    Parameters:
+    - user_id: integer, ID of the current user
+    """
+    conn = sqlite3.connect("habittracker.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            a.HabitName
+        FROM
+            habits a LEFT JOIN periodtypes b
+                ON a.periodtypeID = b.periodtypeID
+        WHERE
+            a.userID = ? AND
+            a.IsActive = 1 AND
+            b.Periodtype = ? 
+    """(user_id, period))
+
+    results = cursor.fetchall()
+    conn.close()
+
+    return results
 
 
-def get_archived_habits():
-    pass
+def get_archived_habits(user_id):
+    """
+    Get all archived habits of the current user
+
+    Parameters:
+    - user_id: integer, ID of the current user
+    """
+    conn = sqlite3.connect("habittracker.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            HabitName
+        FROM
+            habits
+        WHERE
+            userID = ? AND
+            IsActive = 0
+    """(user_id))
+
+    results = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
+    return results
 
 
 def get_numbr_checks():

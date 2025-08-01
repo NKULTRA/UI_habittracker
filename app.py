@@ -19,4 +19,4 @@ def server(input, output, session):
     home_screen_server(input, output, session)
 
 
-app = App(home_screen_ui, home_screen_server)
+app = App(app_ui, server)
