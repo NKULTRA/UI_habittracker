@@ -1,3 +1,4 @@
+from sqlite3 import IntegrityError
 from services.database import get_users, new_user
 
 class User:
@@ -11,5 +12,9 @@ class User:
 
     @classmethod
     def create(cls, username):
-        user_id = new_user(username)
-        return cls(user_id, username)
+        try:
+            user_id = new_user(username)
+            return cls(user_id, username)
+        except IntegrityError:
+            print(f"⚠️ Username '{username}' already exists.")
+            return None

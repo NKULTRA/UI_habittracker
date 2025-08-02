@@ -20,6 +20,10 @@ app_ui = ui.page_fluid(
             rel="stylesheet",
             href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/lumen/bootstrap.min.css"
         ),
+        ui.tags.link(
+            rel="stylesheet",
+            href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap"
+        ),
         ui.include_css("static/styles.css")
     ),
     user_selection_ui() 

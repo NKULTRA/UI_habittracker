@@ -85,14 +85,17 @@ def new_user(user_name):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    "INSERT INTO user (UserName) VALUES ({user_name})"
     cursor.execute("""
         INSERT INTO user
-        VALUES ?
-    """, (user_name))
+                   (UserName)
+        VALUES (?)
+    """, (user_name, ))
 
     conn.commit()
+    user_id = cursor.lastrowid
     conn.close()
+
+    return (user_id, user_name)
 
 
 def load_user_information(user_id):
@@ -128,7 +131,7 @@ def get_users():
 
     cursor.execute("""
         SELECT 
-            userID
+            userID,
             Username
         FROM
             user
@@ -136,7 +139,7 @@ def get_users():
 
     results = cursor.fetchall()
     conn.close()
-
+    print(results)
     return results
 
 
@@ -208,44 +211,6 @@ def edit_entry(user_id, habit_id, updates):
         f"UPDATE habits SET {columns} WHERE habitID = ? AND userID = ?",
         values
     )
-
-    conn.commit()
-    conn.close()
-
-
-def get_longest_streak():
-    """
-    Get the longest streak of all habits,
-    archived or active
-    """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        WITH streaks AS(
-            SELECT a.habitID,
-                   DATE(a.ActivityDate) AS act_date,
-                   LAG(a.ActivityDate) OVER(ORDER BY act_date) AS one_act_before 
-                   )
-    """)
-
-    conn.close()
-
-
-
-def get_longest_streak(user_id, habit_id):
-    """
-    Get the longest streak of a particular habits,
-    chosen by the user
-
-    Parameters:
-    - user_id: integer, ID of the current user
-    - habit_id: integer, ID of the habit
-    """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-
-    """)
 
     conn.commit()
     conn.close()
@@ -330,4 +295,12 @@ def get_archived_habits(user_id):
 
 
 def get_numbr_checks():
+    pass
+
+
+def get_longest_streak():
+    pass
+
+
+def get_longest_streak(user_id, habit_id):
     pass
