@@ -8,7 +8,6 @@ body {
     background: linear-gradient(135deg, #d4f7d4, #a0e6a0);
     font-family: Arial, sans-serif;
 }
-
 .login-box {
     display: flex;
     justify-content: center;
@@ -16,7 +15,6 @@ body {
     text-align: center;
     min-height: 100vh;
 }
-
 .inner-login {
     border: 1px solid #ddd;
     border-radius: 20px;
@@ -25,9 +23,24 @@ body {
     max-width: 400px;
     text-align: center;
 }
-
 .logo_login {
     height: auto;
     max-width: 120px;
     object-fit: contain; 
+}
+.profile-container {
+    display: flex;
+    gap: 1rem;
+}
+.profile-card {
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    cursor: pointer;
+    flex: 1;
+    text-align: center;
+    transition: transform 0.2s;
+}
+.profile-card:hover {
+    transform: scale(1.05);
 }

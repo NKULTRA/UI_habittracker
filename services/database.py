@@ -1,6 +1,8 @@
 """
 Script handles the database setup
 """
+from config import DB_PATH
+
 import sqlite3
 
 
@@ -8,7 +10,7 @@ def setup_database():
     """
     Create all tables for the habittracker application if they don't exist.
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # enable foreign key constraints
@@ -73,6 +75,71 @@ def setup_database():
     conn.close()
 
 
+def new_user(user_name):
+    """
+    Create a new user in the database
+
+    Parameters:
+    - user_name: str, the name the user enters
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    "INSERT INTO user (UserName) VALUES ({user_name})"
+    cursor.execute("""
+        INSERT INTO user
+        VALUES ?
+    """, (user_name))
+
+    conn.commit()
+    conn.close()
+
+
+def load_user_information(user_id):
+    """
+    Get all information of the user, when it exists
+
+    Parameters:
+    - user_id: integer, the ID of the chosen user
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT 
+            userID
+            Username
+        FROM
+            user
+    """)
+
+    results = cursor.fetchall()
+    conn.close()
+
+    return results
+
+
+def get_users():
+    """
+    Get all users that already exist
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT 
+            userID
+            Username
+        FROM
+            user
+    """)
+
+    results = cursor.fetchall()
+    conn.close()
+
+    return results
+
+
 def add_entry(table, entry):
     """
     Adds a row to the given table.
@@ -82,15 +149,13 @@ def add_entry(table, entry):
     - entry: dict, mapping of column names to values, e.g.
              {"HabitName": "Read", "Is_Active": 1, ...}
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Extract column names and values
     columns = ", ".join(entry.keys())
     placeholders = ", ".join(["?"] * len(entry))
     values = tuple(entry.values())
 
-    # Build and execute query
     query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
     cursor.execute(query, values)
 
@@ -107,7 +172,7 @@ def archive_entry(user_id, habit_name):
     - user_id: integer, ID of the current user
     - habit_name: string, Name of the habit
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE habits 
@@ -129,7 +194,7 @@ def edit_entry(user_id, habit_id, updates):
     - updates: dict, mapping of column names to new values, e.g.
              {"HabitName": "Read", ...}
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # delete all old activities
@@ -153,7 +218,7 @@ def get_longest_streak():
     Get the longest streak of all habits,
     archived or active
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         WITH streaks AS(
@@ -176,7 +241,7 @@ def get_longest_streak(user_id, habit_id):
     - user_id: integer, ID of the current user
     - habit_id: integer, ID of the habit
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
 
@@ -193,7 +258,7 @@ def get_active_habits(user_id):
     Parameters:
     - user_id: integer, ID of the current user
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         SELECT 
@@ -219,7 +284,7 @@ def get_habits_with_same_period(user_id, period):
     Parameters:
     - user_id: integer, ID of the current user
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         SELECT 
@@ -246,7 +311,7 @@ def get_archived_habits(user_id):
     Parameters:
     - user_id: integer, ID of the current user
     """
-    conn = sqlite3.connect("habittracker.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
         SELECT 

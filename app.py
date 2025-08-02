@@ -6,7 +6,9 @@ from pathlib import Path
 
 from shiny import App, render, ui
 from modules.user_selection_module import user_selection_ui, user_selection_server
+from services.database import setup_database
 
+setup_database()
 
 dir = Path(os.path.abspath('')).resolve()
 static_path = dir.joinpath("static")
