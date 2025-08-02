@@ -1,3 +1,33 @@
 /* 
 here are all style elements of the application handled
 */
+
+body {
+    margin: 0;
+    height: 100vh;
+    background: linear-gradient(135deg, #d4f7d4, #a0e6a0);
+    font-family: Arial, sans-serif;
+}
+
+.login-box {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 100vh;
+}
+
+.inner-login {
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,1);
+    padding: 2rem;
+    max-width: 400px;
+    text-align: center;
+}
+
+.logo_login {
+    height: auto;
+    max-width: 120px;
+    object-fit: contain; 
+}
