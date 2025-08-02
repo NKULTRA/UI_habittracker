@@ -21,7 +21,7 @@ def edit_habits_ui():
     )
 
 
-def edit_habits_server(input, output, session):
+def edit_habits_server(input, output, session, current_page, current_user):
     @output
     @render.text
     def greeting():

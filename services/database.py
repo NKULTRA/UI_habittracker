@@ -10,69 +10,68 @@ def setup_database():
     """
     Create all tables for the habittracker application if they don't exist.
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
 
-    # enable foreign key constraints
-    cursor.execute("PRAGMA foreign_keys = ON;")
+        # enable foreign key constraints
+        cursor.execute("PRAGMA foreign_keys = ON;")
 
-    # create user table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user (
-            userID INTEGER PRIMARY KEY AUTOINCREMENT,
-            Username TEXT UNIQUE NOT NULL,
-            DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        # create user table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user (
+                userID INTEGER PRIMARY KEY AUTOINCREMENT,
+                Username TEXT UNIQUE NOT NULL,
+                DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    # create habits table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS habits (
-            habitID INTEGER PRIMARY KEY AUTOINCREMENT,
-            userID INTEGER NOT NULL,
-            periodtypeID INTEGER NOT NULL,
-            HabitName TEXT NOT NULL,
-            DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            LastChecked TIMESTAMP,
-            IsActive BOOLEAN DEFAULT 1,
-            FOREIGN KEY (userID) REFERENCES user(userID),
-            FOREIGN KEY (periodtypeID) REFERENCES periodtypes(periodtypeID),
-            UNIQUE(userID, HabitName)
-        )
-    """)
+        # create habits table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS habits (
+                habitID INTEGER PRIMARY KEY AUTOINCREMENT,
+                userID INTEGER NOT NULL,
+                periodtypeID INTEGER NOT NULL,
+                HabitName TEXT NOT NULL,
+                DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                LastChecked TIMESTAMP,
+                IsActive BOOLEAN DEFAULT 1,
+                FOREIGN KEY (userID) REFERENCES user(userID),
+                FOREIGN KEY (periodtypeID) REFERENCES periodtypes(periodtypeID),
+                UNIQUE(userID, HabitName)
+            )
+        """)
 
-    # create periodtypes table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS periodtypes (
-            periodtypeID INTEGER PRIMARY KEY AUTOINCREMENT,
-            Periodtype TEXT UNIQUE NOT NULL,
-            EqualsToDays INTEGER NOT NULL
-        )
-    """)
+        # create periodtypes table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS periodtypes (
+                periodtypeID INTEGER PRIMARY KEY AUTOINCREMENT,
+                Periodtype TEXT UNIQUE NOT NULL,
+                EqualsToDays INTEGER NOT NULL
+            )
+        """)
 
-    # create activities table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS activities (
-            activityID INTEGER PRIMARY KEY AUTOINCREMENT,
-            habitID INTEGER NOT NULL,
-            activitytypeID INTEGER NOT NULL,
-            ActivityDate TIMESTAMP,
-            DateCreated TIMESTAMP,
-            FOREIGN KEY (habitID) REFERENCES habits(habitID),
-            FOREIGN KEY (activitytypeID) REFERENCES activitytypes(activitytypeID)
-        )
-    """)
+        # create activities table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS activities (
+                activityID INTEGER PRIMARY KEY AUTOINCREMENT,
+                habitID INTEGER NOT NULL,
+                activitytypeID INTEGER NOT NULL,
+                ActivityDate TIMESTAMP,
+                DateCreated TIMESTAMP,
+                FOREIGN KEY (habitID) REFERENCES habits(habitID),
+                FOREIGN KEY (activitytypeID) REFERENCES activitytypes(activitytypeID)
+            )
+        """)
 
-    # create activitytypes table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS activitytypes (
-            activitytypeID INTEGER PRIMARY KEY AUTOINCREMENT,
-            ActivityName TEXT UNIQUE NOT NULL
-        )
-    """)
+        # create activitytypes table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS activitytypes (
+                activitytypeID INTEGER PRIMARY KEY AUTOINCREMENT,
+                ActivityName TEXT UNIQUE NOT NULL
+            )
+        """)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def new_user(user_name):
@@ -82,21 +81,42 @@ def new_user(user_name):
     Parameters:
     - user_name: str, the name the user enters
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute("""
-        INSERT INTO user
-                   (UserName)
-        VALUES (?)
-    """, (user_name, ))
+        cursor.execute("""
+            INSERT INTO user
+                    (UserName)
+            VALUES (?)
+        """, (user_name, ))
 
-    conn.commit()
-    user_id = cursor.lastrowid
-    conn.close()
+        conn.commit()
+        user_id = cursor.lastrowid
 
-    return (user_id, user_name)
+        return (user_id, user_name)
 
+
+def user_exists(username):
+    """
+    Check whether a username is already in the database
+
+    Parameters:
+    - user_name: str, the name the user enters
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                1 
+            FROM 
+                user 
+            WHERE 
+                Username = ?
+        """, (username,))
+        
+        return cursor.fetchone() is not None
+    
 
 def load_user_information(user_id):
     """
@@ -105,42 +125,40 @@ def load_user_information(user_id):
     Parameters:
     - user_id: integer, the ID of the chosen user
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT 
-            userID
-            Username
-        FROM
-            user
-    """)
+        cursor.execute("""
+            SELECT 
+                userID,
+                Username
+            FROM
+                user
+        """)
 
-    results = cursor.fetchall()
-    conn.close()
+        results = cursor.fetchall()
 
-    return results
+        return results
 
 
 def get_users():
     """
     Get all users that already exist
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT 
-            userID,
-            Username
-        FROM
-            user
-    """)
+        cursor.execute("""
+            SELECT 
+                userID,
+                Username
+            FROM
+                user
+        """)
 
-    results = cursor.fetchall()
-    conn.close()
-    print(results)
-    return results
+        results = cursor.fetchall()
+
+        return results
 
 
 def add_entry(table, entry):
@@ -152,18 +170,17 @@ def add_entry(table, entry):
     - entry: dict, mapping of column names to values, e.g.
              {"HabitName": "Read", "Is_Active": 1, ...}
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    columns = ", ".join(entry.keys())
-    placeholders = ", ".join(["?"] * len(entry))
-    values = tuple(entry.values())
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        
+        columns = ", ".join(entry.keys())
+        placeholders = ", ".join(["?"] * len(entry))
+        values = tuple(entry.values())
 
-    query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-    cursor.execute(query, values)
+        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+        cursor.execute(query, values)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def archive_entry(user_id, habit_name):
@@ -175,16 +192,15 @@ def archive_entry(user_id, habit_name):
     - user_id: integer, ID of the current user
     - habit_name: string, Name of the habit
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE habits 
-        SET IsActive = 0
-        WHERE userID = ? AND HabitName = ?
-    """, (user_id, habit_name))
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE habits 
+            SET IsActive = 0
+            WHERE userID = ? AND HabitName = ?
+        """, (user_id, habit_name))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def edit_entry(user_id, habit_id, updates):
@@ -197,23 +213,27 @@ def edit_entry(user_id, habit_id, updates):
     - updates: dict, mapping of column names to new values, e.g.
              {"HabitName": "Read", ...}
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
 
-    # delete all old activities
-    cursor.execute("DELETE FROM activities WHERE habitID = ?", (habit_id,))
+        # delete all old activities
+        cursor.execute("""
+            DELETE FROM activities 
+                WHERE habitID = ?
+        """, (habit_id,))
 
-    # build update query
-    columns = ", ".join([f"{col} = ?" for col in updates.keys()])
-    values = list(updates.values()) + [habit_id, user_id]
+        # build update query
+        columns = ", ".join([f"{col} = ?" for col in updates.keys()])
+        values = list(updates.values()) + [habit_id, user_id]
 
-    cursor.execute(
-        f"UPDATE habits SET {columns} WHERE habitID = ? AND userID = ?",
-        values
-    )
+        cursor.execute(
+            f"""UPDATE habits 
+            SET {columns} 
+            WHERE habitID = ? 
+            AND userID = ?
+            """, values)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def get_active_habits(user_id):
@@ -223,22 +243,22 @@ def get_active_habits(user_id):
     Parameters:
     - user_id: integer, ID of the current user
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 
-            HabitName
-        FROM
-            habits
-        WHERE
-            userID = ? AND
-            IsActive = 1
-    """(user_id))
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                HabitName
+            FROM
+                habits
+            WHERE
+                userID = ? AND
+                IsActive = 1
+        """(user_id))
 
-    results = [row[0] for row in cursor.fetchall()]
-    conn.close()
+        results = [row[0] for row in cursor.fetchall()]
+        conn.close()
 
-    return results
+        return results
 
 
 def get_habits_with_same_period(user_id, period):
@@ -249,24 +269,24 @@ def get_habits_with_same_period(user_id, period):
     Parameters:
     - user_id: integer, ID of the current user
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 
-            a.HabitName
-        FROM
-            habits a LEFT JOIN periodtypes b
-                ON a.periodtypeID = b.periodtypeID
-        WHERE
-            a.userID = ? AND
-            a.IsActive = 1 AND
-            b.Periodtype = ? 
-    """(user_id, period))
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                a.HabitName
+            FROM
+                habits a LEFT JOIN periodtypes b
+                    ON a.periodtypeID = b.periodtypeID
+            WHERE
+                a.userID = ? AND
+                a.IsActive = 1 AND
+                b.Periodtype = ? 
+        """(user_id, period))
 
-    results = cursor.fetchall()
-    conn.close()
+        results = cursor.fetchall()
+        conn.close()
 
-    return results
+        return results
 
 
 def get_archived_habits(user_id):
@@ -276,22 +296,22 @@ def get_archived_habits(user_id):
     Parameters:
     - user_id: integer, ID of the current user
     """
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT 
-            HabitName
-        FROM
-            habits
-        WHERE
-            userID = ? AND
-            IsActive = 0
-    """(user_id))
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                HabitName
+            FROM
+                habits
+            WHERE
+                userID = ? AND
+                IsActive = 0
+        """(user_id))
 
-    results = [row[0] for row in cursor.fetchall()]
-    conn.close()
+        results = [row[0] for row in cursor.fetchall()]
+        conn.close()
 
-    return results
+        return results
 
 
 def get_numbr_checks():

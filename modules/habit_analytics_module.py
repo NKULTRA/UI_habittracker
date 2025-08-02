@@ -21,7 +21,7 @@ def habit_analytics_ui():
     )
 
 
-def habit_analytics_server(input, output, session):
+def habit_analytics_server(input, output, session, current_page, current_user):
     @output
     @render.text
     def greeting():

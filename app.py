@@ -4,8 +4,8 @@ Main starting script for the application
 import os
 from pathlib import Path
 
-from shiny import App, render, ui
-from modules.user_selection_module import user_selection_ui, user_selection_server
+from shiny import App, ui, reactive, render
+from modules import user_selection_module, home_screen_module, edit_habits_module, habit_analytics_module
 from services.database import setup_database
 
 setup_database()
@@ -26,12 +26,31 @@ app_ui = ui.page_fluid(
         ),
         ui.include_css("static/styles.css")
     ),
-    user_selection_ui() 
+    
+    ui.output_ui("main_ui")
 )
 
 
 def server(input, output, session):
-    user_selection_server(input, output, session) 
 
+    current_page = reactive.Value("user_selection")
+    current_user = reactive.Value(None)
+    
+    @output
+    @render.ui
+    def main_ui():
+        if current_page() == "user_selection":
+            return user_selection_module.user_selection_ui()
+        elif current_page() == "home_screen":
+            return home_screen_module.home_screen_ui()
+        elif current_page() == "edit_habits":
+            return edit_habits_module.edit_habits_ui
+        elif current_page() == "analyze_habits":
+            return habit_analytics_module.habit_analytics_ui
+        
+    user_selection_module.user_selection_server(input, output, session, current_page, current_user) 
+    home_screen_module.home_screen_server(input, output, session, current_page, current_user) 
+    edit_habits_module.edit_habits_server(input, output, session, current_page, current_user)
+    habit_analytics_module.habit_analytics_server(input, output, session, current_page, current_user)
 
 app = App(app_ui, server, static_assets=static_path)

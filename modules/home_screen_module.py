@@ -21,7 +21,7 @@ def home_screen_ui():
     )
 
 
-def home_screen_server(input, output, session):
+def home_screen_server(input, output, session, current_page, current_user):
     @output
     @render.text
     def greeting():

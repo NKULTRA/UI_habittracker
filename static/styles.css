@@ -46,11 +46,16 @@ body {
 }
 
 .profile-card {
-    border-radius: 12px;
-    background: white;
     font-weight: bold;
     border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.new-user-card {
+    margin-top: 30px;
+    font-weight: bold;
+    border: none;
     transition: all 0.2s ease-in-out;
     cursor: pointer;
 }
