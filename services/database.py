@@ -71,6 +71,65 @@ def setup_database():
             )
         """)
 
+        # create a view for the streaks
+        cursor.execute("""
+            CREATE VIEW IF NOT EXISTS streaks AS
+                WITH ordered_checks AS (
+                    SELECT
+                        a.habitID,
+                        a.ActivityDate,
+                        pt.EqualsToDays,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY a.habitID
+                            ORDER BY a.ActivityDate DESC
+                        ) AS rn,
+                        LAG(a.ActivityDate) OVER (
+                            PARTITION BY a.habitID
+                            ORDER BY a.ActivityDate DESC
+                        ) AS prev_check
+                    FROM activities a
+                    JOIN activitytypes at ON a.activitytypeID = at.activitytypeID
+                    JOIN habits h ON a.habitID = h.habitID
+                    JOIN periodtypes pt ON h.periodtypeID = pt.periodtypeID
+                    WHERE at.ActivityName = 'check'
+                ),
+                streak_flags AS (
+                    SELECT
+                        habitID,
+                        ActivityDate,
+                        rn,
+                        CASE
+                            WHEN prev_check IS NULL THEN 1
+                            WHEN JULIANDAY(prev_check) - JULIANDAY(ActivityDate) <= EqualsToDays
+                            THEN 1 ELSE 0
+                        END AS in_streak
+                    FROM ordered_checks
+                ),
+                broken_streaks AS (
+                    SELECT
+                        habitID,
+                        rn,
+                        ActivityDate,
+                        in_streak,
+                        SUM(CASE WHEN in_streak = 0 THEN 1 ELSE 0 END)
+                            OVER (PARTITION BY habitID ORDER BY rn) AS streak_group
+                    FROM streak_flags
+                )
+            SELECT
+                h.habitID,
+                h.HabitName,
+                u.Username,
+                pt.Periodtype,
+                COUNT(*) AS current_streak
+            FROM broken_streaks bs
+            JOIN habits h ON bs.habitID = h.habitID
+            JOIN user u ON h.userID = u.userID
+            JOIN periodtypes pt ON h.periodtypeID = pt.periodtypeID
+            WHERE bs.streak_group = 0
+            AND h.IsActive = 1
+            GROUP BY h.habitID;
+        """)
+
         conn.commit()
 
 
@@ -118,9 +177,9 @@ def user_exists(username):
         return cursor.fetchone() is not None
     
 
-def load_user_information(user_id):
+def load_habit_information(user_id):
     """
-    Get all information of the user, when it exists
+    Get all habit information from one particular user
 
     Parameters:
     - user_id: integer, the ID of the chosen user
@@ -253,10 +312,9 @@ def get_active_habits(user_id):
             WHERE
                 userID = ? AND
                 IsActive = 1
-        """(user_id))
+        """, (user_id,))
 
         results = [row[0] for row in cursor.fetchall()]
-        conn.close()
 
         return results
 
@@ -284,7 +342,6 @@ def get_habits_with_same_period(user_id, period):
         """(user_id, period))
 
         results = cursor.fetchall()
-        conn.close()
 
         return results
 
@@ -309,7 +366,6 @@ def get_archived_habits(user_id):
         """(user_id))
 
         results = [row[0] for row in cursor.fetchall()]
-        conn.close()
 
         return results
 

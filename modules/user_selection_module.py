@@ -91,8 +91,7 @@ def user_selection_server(input, output, session, current_page, current_user):
         for user in User.get_all():
             btn = getattr(input, f"select_{user.user_id}")
             if btn() and btn() > 0:
-                loaded = User.load(user.username)[0]
-                current_user.set(loaded)
+                current_user.set(user)
                 current_page.set("home_screen")
                 break   
 

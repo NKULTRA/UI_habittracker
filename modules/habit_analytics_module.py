@@ -11,12 +11,7 @@ def habit_analytics_ui():
         ui.input_text("username", "Enter your username:"),
         ui.output_text("greeting"),
         ui.card(
-            ui.card_header(
-                title = "Hello"
-            ),
-            ui.card_body(
-                ui.output_text("greeting_again")
-            )
+            ui.output_text("greeting_again")
         )
     )
 

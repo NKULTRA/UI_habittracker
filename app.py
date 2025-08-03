@@ -44,9 +44,9 @@ def server(input, output, session):
         elif current_page() == "home_screen":
             return home_screen_module.home_screen_ui()
         elif current_page() == "edit_habits":
-            return edit_habits_module.edit_habits_ui
+            return edit_habits_module.edit_habits_ui()
         elif current_page() == "analyze_habits":
-            return habit_analytics_module.habit_analytics_ui
+            return habit_analytics_module.habit_analytics_ui()
         
     user_selection_module.user_selection_server(input, output, session, current_page, current_user) 
     home_screen_module.home_screen_server(input, output, session, current_page, current_user) 
