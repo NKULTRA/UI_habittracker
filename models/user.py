@@ -1,5 +1,5 @@
 from sqlite3 import IntegrityError
-from services.database import get_users, new_user, get_active_habits
+from services.database import get_users, new_user, get_active_habits, delete_user
 
 class User:
     def __init__(self, user_id, username):
@@ -14,7 +14,7 @@ class User:
         return self._habits
 
     def refresh_habits(self):
-        self.habits = get_active_habits(self.user_id) or []
+        self._habits = get_active_habits(self.user_id) or []
 
     @classmethod
     def get_all(cls):
@@ -24,4 +24,7 @@ class User:
     def create(cls, username):
         user_id = new_user(username)
         return cls(user_id, username)
+
+    def delete(self):
+        delete_user(self.user_id)
 

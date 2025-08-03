@@ -23,7 +23,8 @@ def user_selection_ui():
                 ui.h3("Please click your name or create a new one"),
                 ui.div(
                     {"class": "profile-container"},
-                    ui.output_ui("user_tiles") 
+                    ui.output_ui("user_tiles"),
+                    ui.input_action_button("toggle_delete", "Toggle Delete Mode", class_="btn-danger")
                 )
             )
         )
@@ -31,6 +32,16 @@ def user_selection_ui():
 
 
 def user_selection_server(input, output, session, current_page, current_user):
+    
+    delete_mode = reactive.Value(False)
+    refresh_users = reactive.Value(0)
+
+    @reactive.effect
+    @reactive.event(input.toggle_delete)
+    def _():
+        delete_mode.set(not delete_mode())
+
+    
     @output
     @render.ui
     def user_tiles():
@@ -38,13 +49,15 @@ def user_selection_server(input, output, session, current_page, current_user):
         function to render the user name tiles when there are already user in the database
         the create new user tile is always rendered
         """
+        _ = refresh_users()
         tiles = []
 
         # add tiles for previously created users
         for user in User.get_all():
+            style = "background-color: #f8d7da;" if delete_mode() else ""
             tiles.append(
                 ui.div(
-                    {"class": "profile-card", "id": f"user_{user.user_id}"},
+                    {"class": "profile-card", "id": f"user_{user.user_id}", "style": style},
                     ui.input_action_button(f"select_{user.user_id}", user.username)
                 )
             )
@@ -91,11 +104,33 @@ def user_selection_server(input, output, session, current_page, current_user):
         for user in User.get_all():
             btn = getattr(input, f"select_{user.user_id}")
             if btn() and btn() > 0:
-                current_user.set(user)
-                current_page.set("home_screen")
-                break   
+                if delete_mode():
+                    ui.modal_show(
+                        ui.modal(
+                            f"Are you sure you want to delete {user.username}?",
+                            ui.input_action_button(f"confirm_delete_{user.user_id}", "Yes, delete", class_="btn-danger"),
+                            ui.input_action_button("cancel_delete", "Cancel")
+                        ),
+                    )
+                else:
+                    current_user.set(user)
+                    current_page.set("home_screen")
+                    break   
 
-    
+    for user in User.get_all():
+        @reactive.effect
+        @reactive.event(getattr(input, f"confirm_delete_{user.user_id}"))
+        def _(user=user):
+            user.delete()
+            delete_mode.set(False)
+            refresh_users.set(refresh_users() + 1)
+            ui.modal_remove()
+
+    @reactive.effect
+    @reactive.event(input.cancel_delete)
+    def _():
+        ui.modal_remove()
+
     @reactive.Effect
     @reactive.event(input.submit_new)
     def _():

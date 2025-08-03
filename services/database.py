@@ -150,10 +150,28 @@ def new_user(user_name):
         """, (user_name, ))
 
         conn.commit()
-        user_id = cursor.lastrowid
 
-        return (user_id, user_name)
+        return cursor.lastrowid
 
+
+def delete_user(user_id):
+    """
+    Delete a user and all related habits
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            DELETE FROM habits 
+            WHERE userID = ?
+        """, (user_id,))
+        
+        cursor.execute("""
+            DELETE FROM user 
+            WHERE userID = ?
+        """, (user_id,))
+        
+        conn.commit()
 
 def user_exists(username):
     """
