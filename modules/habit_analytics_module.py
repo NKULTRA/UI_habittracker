@@ -3,6 +3,7 @@ Module creates the Analyze Habits Screen
 after the user clicks the button on the home screen
 """
 from shiny import render, ui
+from services.state import state, update_state
 
 
 def habit_analytics_ui():
@@ -16,7 +17,7 @@ def habit_analytics_ui():
     )
 
 
-def habit_analytics_server(input, output, session, current_page, current_user):
+def habit_analytics_server(input, output, session):
     @output
     @render.text
     def greeting():

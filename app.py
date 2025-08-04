@@ -4,9 +4,10 @@ Main starting script for the application
 import os
 from pathlib import Path
 
-from shiny import App, ui, reactive, render
-from modules import user_selection_module, home_screen_module, edit_habits_module, habit_analytics_module
+from shiny import App, ui, render
+from modules import user_selection_module, user_deletion_module, home_screen_module, edit_habits_module, habit_analytics_module
 from services.database import setup_database
+from services.state import state
 
 setup_database()
 
@@ -33,24 +34,27 @@ app_ui = ui.page_fluid(
 
 def server(input, output, session):
 
-    current_page = reactive.Value("user_selection")
-    current_user = reactive.Value(None)
-    
+
     @output
     @render.ui
     def main_ui():
-        if current_page() == "user_selection":
+
+        if state()["current_page"] == "user_selection":
             return user_selection_module.user_selection_ui()
-        elif current_page() == "home_screen":
+        elif state()["current_page"] == "delete_screen":
+            return user_deletion_module.user_deletion_ui()
+        elif state()["current_page"] == "home_screen":
             return home_screen_module.home_screen_ui()
-        elif current_page() == "edit_habits":
+        elif state()["current_page"] == "edit_habits":
             return edit_habits_module.edit_habits_ui()
-        elif current_page() == "analyze_habits":
+        elif state()["current_page"] == "analyze_habits":
             return habit_analytics_module.habit_analytics_ui()
         
-    user_selection_module.user_selection_server(input, output, session, current_page, current_user) 
-    home_screen_module.home_screen_server(input, output, session, current_page, current_user) 
-    edit_habits_module.edit_habits_server(input, output, session, current_page, current_user)
-    habit_analytics_module.habit_analytics_server(input, output, session, current_page, current_user)
+
+    user_selection_module.user_selection_server(input, output, session)
+    user_deletion_module.user_deletion_server(input, output, session)
+    home_screen_module.home_screen_server(input, output, session)
+    edit_habits_module.edit_habits_server(input, output, session)
+    habit_analytics_module.habit_analytics_server(input, output, session)
 
 app = App(app_ui, server, static_assets=static_path)

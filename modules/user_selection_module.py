@@ -3,10 +3,9 @@ Module creates the first page of the application
 The user selection screen
 """
 from shiny import ui, reactive, render
-from modules.home_screen_module import home_screen_ui, home_screen_server
 from models.user import User
 from services.database import user_exists
-
+from services.state import update_state
 
 def user_selection_ui():
     """
@@ -15,33 +14,27 @@ def user_selection_ui():
     return ui.page_fluid(
         ui.div(
             {"class": "login-box"},
+            ui.h3("Habit tracker"),
+            ui.img(src="images/lifestyle.svg", class_="login-img"),
+            ui.h3("Please click your name or create a new one"),
 
             ui.div(
-                {"class": "inner-login-box"},
-                ui.h3("Habit tracker"),
-                ui.img(src="images/lifestyle.svg", class_="login-img"),
-                ui.h3("Please click your name or create a new one"),
-                ui.div(
-                    {"class": "profile-container"},
-                    ui.output_ui("user_tiles"),
-                    ui.input_action_button("toggle_delete", "Toggle Delete Mode", class_="btn-danger")
-                )
+                {"class": "profile-container"},
+                ui.output_ui("user_tiles")
+            ),
+
+            ui.div( 
+                {"class": "new-user-container"},
+                ui.input_text("input_create", label=None, placeholder="Create new user"),
+                ui.input_action_button("submit_new", "Create", disabled=True)
             )
         )
     )
 
+def user_selection_server(input, output, session):
 
-def user_selection_server(input, output, session, current_page, current_user):
-    
-    delete_mode = reactive.Value(False)
-    refresh_users = reactive.Value(0)
+    refresh_user = reactive.Value(0)
 
-    @reactive.effect
-    @reactive.event(input.toggle_delete)
-    def _():
-        delete_mode.set(not delete_mode())
-
-    
     @output
     @render.ui
     def user_tiles():
@@ -49,50 +42,34 @@ def user_selection_server(input, output, session, current_page, current_user):
         function to render the user name tiles when there are already user in the database
         the create new user tile is always rendered
         """
-        _ = refresh_users()
         tiles = []
+        _ = refresh_user()
 
         # add tiles for previously created users
         for user in User.get_all():
-            style = "background-color: #f8d7da;" if delete_mode() else ""
             tiles.append(
                 ui.div(
-                    {"class": "profile-card", "id": f"user_{user.user_id}", "style": style},
+                    {"class": "profile-card", "id": f"user_{user.user_id}"},
                     ui.input_action_button(f"select_{user.user_id}", user.username)
                 )
             )
-        
-        # new user input box
-        tiles.append(
-            ui.row(
-                {"class": "new-user-card"},
-
-                ui.column(8,
-                          ui.input_text("create_user", None, placeholder="Create new user")
-                ),
-
-                ui.column(4,
-                          ui.input_action_button("submit_new", "Create", disabled=True)
-                )
-            )
-        )
-        
+                
         return tiles
     
 
-    @reactive.Effect
+    @reactive.effect
     def toggle_button():
         """
         the create button next to the text input field is not clickable when there is no input yet
         this was set, because otherwise an empty string is written to the database
         """
-        if input.create_user().strip():
+        if input.input_create().strip():
             ui.update_action_button("submit_new", disabled=False)
         else:
             ui.update_action_button("submit_new", disabled=True)
 
 
-    @reactive.Effect
+    @reactive.effect
     def handle_user_clicks():
         """
         reactive function to handle the user selection for already existing users
@@ -101,37 +78,16 @@ def user_selection_server(input, output, session, current_page, current_user):
         - because at application start it is not known how many buttons there will be, 
         this checks for all buttons and whether one was clicked, than breaks the loop
         """
-        for user in User.get_all():
-            btn = getattr(input, f"select_{user.user_id}")
-            if btn() and btn() > 0:
-                if delete_mode():
-                    ui.modal_show(
-                        ui.modal(
-                            f"Are you sure you want to delete {user.username}?",
-                            ui.input_action_button(f"confirm_delete_{user.user_id}", "Yes, delete", class_="btn-danger"),
-                            ui.input_action_button("cancel_delete", "Cancel")
-                        ),
-                    )
-                else:
-                    current_user.set(user)
-                    current_page.set("home_screen")
-                    break   
+        _ = refresh_user()
 
-    for user in User.get_all():
-        @reactive.effect
-        @reactive.event(getattr(input, f"confirm_delete_{user.user_id}"))
-        def _(user=user):
-            user.delete()
-            delete_mode.set(False)
-            refresh_users.set(refresh_users() + 1)
-            ui.modal_remove()
+        for user in User.get_all():
+            @reactive.effect
+            @reactive.event(getattr(input, f"select_{user.user_id}"), ignore_init=True)
+            def _(user=user):
+                update_state(current_user=user, current_page="home_screen")
+
 
     @reactive.effect
-    @reactive.event(input.cancel_delete)
-    def _():
-        ui.modal_remove()
-
-    @reactive.Effect
     @reactive.event(input.submit_new)
     def _():
         """
@@ -140,7 +96,7 @@ def user_selection_server(input, output, session, current_page, current_user):
         - when the user already exists in the database, there is an error message
         - otherwise the user will be added to the database and the application goes to the home screen
         """
-        name = input.create_user()
+        name = input.input_create()
 
         if user_exists(name):
             
@@ -154,6 +110,5 @@ def user_selection_server(input, output, session, current_page, current_user):
             )
         else:
             new_user = User.create(name)
-            current_user.set(new_user)
-            current_page.set("home_screen")
-
+            refresh_user.set(refresh_user() + 1)
+            update_state(current_user=new_user, current_page="home_screen")

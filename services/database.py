@@ -195,9 +195,9 @@ def user_exists(username):
         return cursor.fetchone() is not None
     
 
-def load_habit_information(user_id):
+def user_information(user_id):
     """
-    Get all habit information from one particular user
+    Get the username by the id 
 
     Parameters:
     - user_id: integer, the ID of the chosen user
@@ -213,8 +213,8 @@ def load_habit_information(user_id):
                 user
         """)
 
-        results = cursor.fetchall()
-
+        results = cursor.fetchone()
+            
         return results
 
 

@@ -1,5 +1,4 @@
-from sqlite3 import IntegrityError
-from services.database import get_users, new_user, get_active_habits, delete_user
+from services.database import user_information, get_users, new_user, get_active_habits, delete_user
 
 class User:
     def __init__(self, user_id, username):
@@ -23,6 +22,11 @@ class User:
     @classmethod
     def create(cls, username):
         user_id = new_user(username)
+        return cls(user_id, username)
+
+    @classmethod
+    def load_by_id(cls, user_id):
+        user_id, username = user_information(user_id)
         return cls(user_id, username)
 
     def delete(self):

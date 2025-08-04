@@ -1,5 +1,5 @@
 /* 
-here are all style elements of the application handled
+Global styles for the habit tracker application
 */
 
 body {
@@ -13,18 +13,15 @@ body {
 }
 
 .login-box {
-    background: rgba(255, 255, 255, 0.85); /* slightly translucent */
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 20px;
     padding: 2rem;
-    max-width: 400px;
+    max-width: 420px;
     margin: auto;
     box-shadow: 
-        0 4px 6px rgba(0,0,0,0.08),   /* soft main shadow */
-        0 10px 20px rgba(0,0,0,0.05); /* subtle depth */
-    backdrop-filter: blur(8px);        /* frosted glass effect */
-}
-
-.inner-login-box {
+        0 4px 6px rgba(0,0,0,0.08),
+        0 10px 20px rgba(0,0,0,0.05);
+    backdrop-filter: blur(8px);
     text-align: center;
     justify-content: center;
     align-items: center;
@@ -33,8 +30,25 @@ body {
 
 .login-img {
     max-width: 120px;
-    margin-top: 100px;
-    margin-bottom: 75px;  
+    margin: 80px auto 50px auto;  
+    display: block;
+}
+
+.new-user-container .btn {
+    display: flex;
+    height: 2.6rem;  
+}
+
+.new-user-container input[type="text"] {
+    height: 2.6rem;  
+    box-sizing: border-box;
+    max-width: 240px;
+}
+
+.new-user-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
 }
 
 .profile-container {
@@ -46,47 +60,69 @@ body {
 }
 
 .profile-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 140px;
     font-weight: bold;
-    border: none;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.85);
     transition: all 0.2s ease-in-out;
     cursor: pointer;
-}
-
-.new-user-card {
-    margin-top: 30px;
-    font-weight: bold;
-    border: none;
-    transition: all 0.2s ease-in-out;
-    cursor: pointer;
-}
-
-.profile-card input[type="text"] {
-    display: block;
-    margin: 0 auto 0.5rem auto; 
-    width: 80%;                
-    max-width: 200px;
-    padding: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 8px;
 }
 
 .profile-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.profile-card .btn {
+    width: 100%;
 }
 
 button, .btn, input[type="button"] {
     background: linear-gradient(135deg, #5b945b, #4fbf4f);
     border: none;
     color: white;
-    padding: 0.5rem 1.5rem;
+    padding: 0.5rem 1.2rem;
     border-radius: 8px;
     font-weight: bold;
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     transition: all 0.2s ease-in-out;
+    cursor: pointer;
 }
 
 button:hover, .btn:hover, input[type="button"]:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.delete-button {
+    background: linear-gradient(135deg, #b5b5b5, #8e8e8e);
+}
+
+.delete-button:hover {
+    background: linear-gradient(135deg, #c9302c, #a52b28);
+    transform: translateY(-2px);
+}
+
+.modal-content {
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    border: none;
+}
+
+.modal-header {
+    font-weight: bold;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.delete-mode {
+    background: rgba(255, 230, 230, 0.9);
 }

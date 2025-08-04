@@ -3,7 +3,7 @@ Module creates the Edit Habits Screen
 after the user clicks the button on the home screen
 """
 from shiny import render, ui
-
+from services.state import state, update_state
 
 def edit_habits_ui():
     return ui.page_fluid(
@@ -21,7 +21,7 @@ def edit_habits_ui():
     )
 
 
-def edit_habits_server(input, output, session, current_page, current_user):
+def edit_habits_server(input, output, session):
     @output
     @render.text
     def greeting():
