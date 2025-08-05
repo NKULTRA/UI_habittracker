@@ -40,7 +40,6 @@ def user_selection_server(input, output, session):
     def user_tiles():
         """
         function to render the user name tiles when there are already user in the database
-        the create new user tile is always rendered
         """
         tiles = []
         _ = refresh_user()
@@ -61,7 +60,7 @@ def user_selection_server(input, output, session):
     def toggle_button():
         """
         the create button next to the text input field is not clickable when there is no input yet
-        this was set, because otherwise an empty string is written to the database
+        this was set, because otherwise an empty string can be written to the database
         """
         if input.input_create().strip():
             ui.update_action_button("submit_new", disabled=False)
@@ -75,8 +74,6 @@ def user_selection_server(input, output, session):
         reactive function to handle the user selection for already existing users
         - the user needs to click on one of the buttons with a name, after the current_user is set and the application
         switches to the home screen
-        - because at application start it is not known how many buttons there will be, 
-        this checks for all buttons and whether one was clicked, than breaks the loop
         """
         _ = refresh_user()
 

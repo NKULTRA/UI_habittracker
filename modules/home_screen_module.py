@@ -8,24 +8,23 @@ from services.state import state, update_state
 
 def home_screen_ui():
     return ui.page_fluid(
-        ui.layout_columns(  
-            ui.card(
-                ui.input_action_button("user_selection", "Back to user selection"),
-                width=12)
-            ),
         ui.layout_columns(
-            # habits table on the left of the UI
+            ui.div(
+                {"class": "home-container"},
+                # habits table on the left of the UI
             ui.card(
+                {"class": "home-table"},
                 ui.h4("Your Habits"),
-                ui.output_ui("habits_display"),
-                width=8
+                ui.output_ui("habits_display")
             ),
             
             # Buttons on the right side of the UI
             ui.card(
+                {"class": "home-buttons"},
                 ui.input_action_button("edit_habits", "Edit Habits"),
                 ui.input_action_button("analyze_habits", "Analyze Habits"),
-                width=4
+                ui.input_action_button("user_selection", "Back to user selection")
+            )
             )
         )
     )
@@ -40,9 +39,7 @@ def home_screen_server(input, output, session):
         """
         user = state()["current_user"]
 
-        if user is None:
-            return ui.div()
-        elif not user.habits:
+        if not user.habits:
             return ui.p("No habits yet - create your first one through the 'Edit habits' button on the right.")
         else:
             return ui.output_table("habits_table")

@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from shiny import App, ui, render
-from modules import user_selection_module, user_deletion_module, home_screen_module, edit_habits_module, habit_analytics_module
+from modules import user_selection_module, home_screen_module, edit_habits_module, habit_analytics_module
 from services.database import setup_database
 from services.state import state
 
@@ -41,8 +41,6 @@ def server(input, output, session):
 
         if state()["current_page"] == "user_selection":
             return user_selection_module.user_selection_ui()
-        elif state()["current_page"] == "delete_screen":
-            return user_deletion_module.user_deletion_ui()
         elif state()["current_page"] == "home_screen":
             return home_screen_module.home_screen_ui()
         elif state()["current_page"] == "edit_habits":
@@ -52,7 +50,6 @@ def server(input, output, session):
         
 
     user_selection_module.user_selection_server(input, output, session)
-    user_deletion_module.user_deletion_server(input, output, session)
     home_screen_module.home_screen_server(input, output, session)
     edit_habits_module.edit_habits_server(input, output, session)
     habit_analytics_module.habit_analytics_server(input, output, session)

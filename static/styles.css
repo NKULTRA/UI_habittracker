@@ -2,6 +2,11 @@
 Global styles for the habit tracker application
 */
 
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
 body {
     display: flex;
     justify-content: center;
@@ -98,15 +103,6 @@ button:hover, .btn:hover, input[type="button"]:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-.delete-button {
-    background: linear-gradient(135deg, #b5b5b5, #8e8e8e);
-}
-
-.delete-button:hover {
-    background: linear-gradient(135deg, #c9302c, #a52b28);
-    transform: translateY(-2px);
-}
-
 .modal-content {
     border-radius: 12px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.25);
@@ -123,6 +119,30 @@ button:hover, .btn:hover, input[type="button"]:hover {
     gap: 1rem;
 }
 
-.delete-mode {
-    background: rgba(255, 230, 230, 0.9);
+.home-container {
+    display: flex;
+    gap: 20px;                
+    padding: 2rem;          
+    background: #fff;          
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-width: 100vw;
+    max-height: 90vh;      
+}
+
+.home-table {
+    flex: 1;               
+    padding: 1rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    overflow: auto;
+}
+
+.home-buttons {
+    flex: 0 0 25%;        
+    padding: 1rem;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }

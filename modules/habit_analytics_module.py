@@ -2,26 +2,36 @@
 Module creates the Analyze Habits Screen
 after the user clicks the button on the home screen
 """
-from shiny import render, ui
+from shiny import render, ui, reactive
 from services.state import state, update_state
 
 
 def habit_analytics_ui():
     return ui.page_fluid(
-        ui.h2("My modular shiny app"),
-        ui.input_text("username", "Enter your username:"),
-        ui.output_text("greeting"),
-        ui.card(
-            ui.output_text("greeting_again")
+        ui.layout_columns(
+            ui.div(
+                {"class": "home-container"},
+
+            ui.card(
+                {"class": "home-table"},
+                ui.h4("Analyze habits"),
+            ),
+            
+            ui.card(
+                {"class": "home-buttons"},
+                ui.input_action_button("home_sc", "Back to the home screen")
+            )
+            )
         )
     )
 
 
 def habit_analytics_server(input, output, session):
-    @output
-    @render.text
-    def greeting():
-        return "welcome :)"
-    
-    def greeting_again():
-        return "welcome :)"
+
+    @reactive.Effect
+    @reactive.event(input.home_sc)
+    def _():
+        """
+        handles the button click on home_sc
+        """
+        update_state(current_page="home_screen")
