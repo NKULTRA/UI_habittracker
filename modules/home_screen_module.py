@@ -38,7 +38,9 @@ def home_screen_server(input, output, session):
         creates the habits table on the left of the UI
         """
         user = state()["current_user"]
-
+        if user is None:
+            return
+        
         if not user.habits:
             return ui.p("No habits yet - create your first one through the 'Edit habits' button on the right.")
         else:

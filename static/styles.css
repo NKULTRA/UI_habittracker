@@ -140,7 +140,7 @@ button:hover, .btn:hover, input[type="button"]:hover {
 }
 
 .home-buttons {
-    flex: 0 0 25%;        
+    flex: 0 0 33%;     
     padding: 1rem;
     background: white;
     border-radius: 10px;

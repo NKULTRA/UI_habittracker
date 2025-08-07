@@ -4,7 +4,7 @@ Main starting script for the application
 import os
 from pathlib import Path
 
-from shiny import App, ui, render
+from shiny import App, ui, render, reactive
 from modules import user_selection_module, home_screen_module, edit_habits_module, habit_analytics_module
 from services.database import setup_database
 from services.state import state
@@ -34,24 +34,36 @@ app_ui = ui.page_fluid(
 
 def server(input, output, session):
 
+    initialized_modules = set()
 
     @output
     @render.ui
     def main_ui():
+        page = state()["current_page"]
 
-        if state()["current_page"] == "user_selection":
+        if page == "user_selection":
             return user_selection_module.user_selection_ui()
-        elif state()["current_page"] == "home_screen":
+        elif page == "home_screen":
             return home_screen_module.home_screen_ui()
-        elif state()["current_page"] == "edit_habits":
+        elif page == "edit_habits":
             return edit_habits_module.edit_habits_ui()
-        elif state()["current_page"] == "analyze_habits":
+        elif page == "analyze_habits":
             return habit_analytics_module.habit_analytics_ui()
-        
 
-    user_selection_module.user_selection_server(input, output, session)
-    home_screen_module.home_screen_server(input, output, session)
-    edit_habits_module.edit_habits_server(input, output, session)
-    habit_analytics_module.habit_analytics_server(input, output, session)
+    @reactive.Effect
+    def run_server_logic():
+        page = state()["current_page"]
+        
+        if page not in initialized_modules:
+            if page == "user_selection":
+                user_selection_module.user_selection_server(input, output, session)
+            elif page == "home_screen":
+                home_screen_module.home_screen_server(input, output, session)
+            elif page == "edit_habits":
+                edit_habits_module.edit_habits_server(input, output, session)
+            elif page == "analyze_habits":
+                habit_analytics_module.habit_analytics_server(input, output, session)
+            initialized_modules.add(page)
+
 
 app = App(app_ui, server, static_assets=static_path)

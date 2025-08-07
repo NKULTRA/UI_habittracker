@@ -5,7 +5,7 @@ The user selection screen
 from shiny import ui, reactive, render
 from models.user import User
 from services.database import user_exists
-from services.state import update_state
+from services.state import state, update_state
 
 def user_selection_ui():
     """
@@ -33,8 +33,6 @@ def user_selection_ui():
 
 def user_selection_server(input, output, session):
 
-    refresh_user = reactive.Value(0)
-
     @output
     @render.ui
     def user_tiles():
@@ -42,7 +40,7 @@ def user_selection_server(input, output, session):
         function to render the user name tiles when there are already user in the database
         """
         tiles = []
-        _ = refresh_user()
+        state()["refresh_user"]
 
         # add tiles for previously created users
         for user in User.get_all():
@@ -75,7 +73,7 @@ def user_selection_server(input, output, session):
         - the user needs to click on one of the buttons with a name, after the current_user is set and the application
         switches to the home screen
         """
-        _ = refresh_user()
+        state()["refresh_user"]
 
         for user in User.get_all():
             @reactive.effect
@@ -107,5 +105,5 @@ def user_selection_server(input, output, session):
             )
         else:
             new_user = User.create(name)
-            refresh_user.set(refresh_user() + 1)
+            update_state(refresh_user =+ 1)
             update_state(current_user=new_user, current_page="home_screen")

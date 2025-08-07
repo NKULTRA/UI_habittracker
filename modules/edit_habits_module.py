@@ -44,7 +44,7 @@ def edit_habits_server(input, output, session):
 
     @reactive.Effect
     @reactive.event(input.add_row)
-    def _():
+    def add_row():
         df = editable_df().copy()
         new_row = {"HabitName": "", "PeriodType": "", "IsActive": True}
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
@@ -53,20 +53,56 @@ def edit_habits_server(input, output, session):
 
     @reactive.Effect
     @reactive.event(input.apply_changes)
-    def _():
+    def save_habits():
         """
         handles the button to go back to the user selection
         """
-        print("test")
+        df = habit_data()
+        user = state()["current_user"]
 
+        for _, row in df.iterrows():
+            if row["HabitName"]:
+                Habit.create(
+                    user_id=user.user_id,
+                    name=row["HabitName"],
+                    period=row["Period"],
+                    is_active=row["IsActive"]
+                )
+        
+        # Redirect to home or clear table
+        habit_data(pd.DataFrame(columns=["HabitName", "Period", "IsActive"]))
+        update_state(current_page="home_screen")
 
     @reactive.Effect
     @reactive.event(input.delete_user)
-    def _():
+    def show_delete_modal():
         """
         handles the button click on user deletion
         """
-        print("delete")
+        ui.modal_show(
+            ui.modal(
+                "Do you really want to delete the current user? This cannot be reversed.",
+                easy_close=False,
+                footer=(
+                    ui.input_action_button("confirm_delete", "Yes, delete"),
+                    ui.input_action_button("cancel_delete", "Cancel")
+                    )
+            )
+        )
+
+    @reactive.Effect
+    @reactive.event(input.confirm_delete)
+    def _():
+        user = state()["current_user"]
+        if hasattr(user, "delete"):
+            user.delete()
+        ui.modal_remove()
+        update_state(current_page = "user_selection", refresh_user =+ 1)
+
+    @reactive.Effect
+    @reactive.event(input.cancel_delete)
+    def _():
+        ui.modal_remove()
 
 
     @reactive.Effect

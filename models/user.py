@@ -12,9 +12,6 @@ class User:
             self._habits = get_active_habits(self.user_id) or []
         return self._habits
 
-    def refresh_habits(self):
-        self._habits = get_active_habits(self.user_id) or []
-
     @classmethod
     def get_all(cls):
         return [cls(user_id, username) for user_id, username in get_users()]
@@ -22,11 +19,6 @@ class User:
     @classmethod
     def create(cls, username):
         user_id = new_user(username)
-        return cls(user_id, username)
-
-    @classmethod
-    def load_by_id(cls, user_id):
-        user_id, username = user_information(user_id)
         return cls(user_id, username)
 
     def delete(self):
