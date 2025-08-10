@@ -8,7 +8,8 @@ import sqlite3
 
 def setup_database():
     """
-    Create all tables for the habittracker application if they don't exist.
+    Create all tables for the habittracker application if they don't exist
+    additionally a view for calculating the streaks
     """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
@@ -132,7 +133,65 @@ def setup_database():
 
         conn.commit()
 
+# ----------------- helper functions -------------------
+def _normalize_period(period_str):
+    """
+    When the user specifies a period as free text number, 
+    this function converts it into a normalized label and 
+    its equivalent in days for use in the periodtypes table
 
+    Parameters:
+    - period_str: string, period entered by the user
+
+    """
+    if int(period_str):
+        n = int(period_str)
+        return (f"every {n} days", n)
+    
+    else:
+        if period_str == "Daily":
+            return ("Daily", 1)
+        if period_str == "Weekly":
+            return ("Weekly", 7)
+        # monthly and yearly are normalized to 30 and 365
+        if period_str == "Monthly":
+            return ("Monthly", 30)
+        if period_str == "Yearly":
+            return ("Yearly", 365)
+
+    # fallback when there is some form of error
+    return ("Daily", 1)
+
+
+def get_or_create_periodtype(period_label, equals_to_days):
+    """
+    Returns periodtypeID for a given label or 
+    creates it if missing.
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT periodtypeID 
+            FROM periodtypes 
+            WHERE Periodtype = ?
+        """, (period_label,))
+
+        row = cursor.fetchone()
+
+        if row:
+            return row["periodtypeID"]
+
+        cursor.execute("""
+            INSERT INTO periodtypes (Periodtype, EqualsToDays) 
+            VALUES (?, ?)
+        """, (period_label, equals_to_days))
+        conn.commit()
+
+        return cursor.lastrowid
+
+
+# ------------------ user specific methods -------------------
 def new_user(user_name):
     """
     Create a new user in the database
@@ -173,6 +232,7 @@ def delete_user(user_id):
         
         conn.commit()
 
+
 def user_exists(username):
     """
     Check whether a username is already in the database
@@ -203,19 +263,17 @@ def user_information(user_id):
     - user_id: integer, the ID of the chosen user
     """
     with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-
         cursor.execute("""
-            SELECT 
-                userID,
-                Username
-            FROM
-                user
-        """)
+            SELECT userID, Username, DateCreated
+            FROM user
+            WHERE userID = ?
+        """, (user_id,))
 
-        results = cursor.fetchone()
-            
-        return results
+        row = cursor.fetchone()
+
+        return dict(row) if row else None
 
 
 def get_users():
@@ -238,7 +296,9 @@ def get_users():
         return results
 
 
-def add_entry(table, entry):
+# ------------ start of habit specific methods -------------
+
+def add_habit(user_id, habit_name, period_str, is_active = 1):
     """
     Adds a row to the given table.
 
@@ -247,94 +307,148 @@ def add_entry(table, entry):
     - entry: dict, mapping of column names to values, e.g.
              {"HabitName": "Read", "Is_Active": 1, ...}
     """
+    label, days = _normalize_period(period_str)
+    periodtype_id = get_or_create_periodtype(label, days)
+
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
-        
-        columns = ", ".join(entry.keys())
-        placeholders = ", ".join(["?"] * len(entry))
-        values = tuple(entry.values())
-
-        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-        cursor.execute(query, values)
-
+        cursor.execute("""
+            INSERT INTO habits (userID, periodtypeID, HabitName, IsActive)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, periodtype_id, habit_name.strip(), int(is_active)))
         conn.commit()
+        return cursor.lastrowid
 
 
-def archive_entry(user_id, habit_name):
+def archive_habit(habit_id):
     """
     When the user wants to archive a habit, 
     this is equal to set IsActive = 0 in the habit table
     
     Parameters:
-    - user_id: integer, ID of the current user
-    - habit_name: string, Name of the habit
+    - habit_id: integer, ID of the habit
     """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE habits 
             SET IsActive = 0
-            WHERE userID = ? AND HabitName = ?
-        """, (user_id, habit_name))
+            WHERE habitID = ?
+        """, (habit_id))
 
         conn.commit()
 
 
-def edit_entry(user_id, habit_id, updates):
+def edit_habit(user_id, habit_id, updates):
     """
-    When the user wants to edit a habit
-    
+    When the user wants to edit a habit, this means updating one or more of
+    its attributes in the habits table. Optionally, existing activities linked
+    to the habit can be removed if its configuration changes.
+
     Parameters:
     - user_id: integer, ID of the current user
     - habit_id: integer, ID of the habit
     - updates: dict, mapping of column names to new values, e.g.
-             {"HabitName": "Read", ...}
+               {"HabitName": "Read", "IsActive": 1, "periodtypeID": 2}
+    """
+    if not updates:
+        return 0
+
+    updates = dict(updates)
+
+    period_changed = False
+    allowed_cols = {"HabitName", "periodtypeID", "IsActive", "LastChecked"}
+
+    return None
+
+
+def delete_habit(habit_id):
+    """
+    When the user wants to delete a habit completely from the database.
+    All activities related to the habit will also be deleted
+
+    Parameters:
+    - habit_id: integer, ID of the habit
     """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
 
-        # delete all old activities
         cursor.execute("""
-            DELETE FROM activities 
+                DELETE FROM activities 
                 WHERE habitID = ?
+            """, (habit_id,))
+        
+        cursor.execute("""
+                    DELETE FROM habits 
+                    WHERE habitID = ?
+                """, (habit_id,))
+        
+        conn.commit()
+
+
+def get_habit(habit_id):
+    """
+    When the application needs the complete details of a single habit
+
+    Parameters:
+    - habit_id: integer, ID of the habit
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                h.habitID, 
+                h.userID, 
+                h.HabitName, 
+                h.periodtypeID,
+                h.DateCreated, 
+                h.LastChecked, 
+                h.IsActive,
+                pt.Periodtype, 
+                pt.EqualsToDays
+            FROM habits h
+              JOIN periodtypes pt ON h.periodtypeID = pt.periodtypeID
+            WHERE h.habitID = ?
         """, (habit_id,))
 
-        # build update query
-        columns = ", ".join([f"{col} = ?" for col in updates.keys()])
-        values = list(updates.values()) + [habit_id, user_id]
+        row = cursor.fetchone()
 
-        cursor.execute(
-            f"""UPDATE habits 
-            SET {columns} 
-            WHERE habitID = ? 
-            AND userID = ?
-            """, values)
-
-        conn.commit()
+        return dict(row) if row else None
 
 
 def get_active_habits(user_id):
     """
-    Get all active habits of the current user
+    Return all habit rows joined with periodtypes
+    so a Habit object can be built.
 
     Parameters:
     - user_id: integer, ID of the current user
     """
     with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+
         cursor = conn.cursor()
+
         cursor.execute("""
-            SELECT 
-                HabitName
-            FROM
-                habits
-            WHERE
-                userID = ? AND
-                IsActive = 1
+            SELECT
+                h.habitID,
+                h.userID,
+                h.HabitName,
+                h.periodtypeID,
+                h.DateCreated,
+                h.LastChecked,
+                h.IsActive,
+                pt.Periodtype,
+                pt.EqualsToDays
+            FROM habits h
+            JOIN periodtypes pt ON h.periodtypeID = pt.periodtypeID
+            WHERE h.userID = ? AND h.IsActive = 1
+            ORDER BY h.DateCreated, h.habitID
         """, (user_id,))
 
-        results = [row[0] for row in cursor.fetchall()]
-
-        return results
+        return [dict(r) for r in cursor.fetchall()]
 
 
 def get_habits_with_same_period(user_id, period):
@@ -346,22 +460,17 @@ def get_habits_with_same_period(user_id, period):
     - user_id: integer, ID of the current user
     """
     with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+
         cursor.execute("""
-            SELECT 
-                a.HabitName
-            FROM
-                habits a LEFT JOIN periodtypes b
-                    ON a.periodtypeID = b.periodtypeID
-            WHERE
-                a.userID = ? AND
-                a.IsActive = 1 AND
-                b.Periodtype = ? 
-        """(user_id, period))
+            SELECT a.habitID, a.HabitName
+            FROM habits a
+            JOIN periodtypes b ON a.periodtypeID = b.periodtypeID
+            WHERE a.userID = ? AND a.IsActive = 1 AND b.Periodtype = ?
+        """, (user_id, period))
 
-        results = cursor.fetchall()
-
-        return results
+        return [dict(r) for r in cursor.fetchall()]
 
 
 def get_archived_habits(user_id):
@@ -374,27 +483,8 @@ def get_archived_habits(user_id):
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT 
-                HabitName
-            FROM
-                habits
-            WHERE
-                userID = ? AND
-                IsActive = 0
-        """(user_id))
-
-        results = [row[0] for row in cursor.fetchall()]
-
-        return results
-
-
-def get_numbr_checks():
-    pass
-
-
-def get_longest_streak():
-    pass
-
-
-def get_longest_streak(user_id, habit_id):
-    pass
+            SELECT habitID, HabitName
+            FROM habits
+            WHERE userID = ? AND IsActive = 0
+        """, (user_id,))
+        return cursor.fetchall()

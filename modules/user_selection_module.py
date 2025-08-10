@@ -40,6 +40,9 @@ def user_selection_server(input, output, session):
         function to render the user name tiles when there are already user in the database
         """
         tiles = []
+
+        # creates a dependency on this reactive value, when it changes the function is called again
+        # for example after user deletion or creating a new one
         state()["refresh_user"]
 
         # add tiles for previously created users

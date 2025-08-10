@@ -38,6 +38,9 @@ def home_screen_server(input, output, session):
         creates the habits table on the left of the UI
         """
         user = state()["current_user"]
+        
+        # server functions are recalled, even when not on this screen, 
+        # this leads to an error-message when returning to the user_selection screen
         if user is None:
             return
         

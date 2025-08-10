@@ -32,6 +32,6 @@ def habit_analytics_server(input, output, session):
     @reactive.event(input.home_sc)
     def _():
         """
-        handles the button click on home_sc
+        handles the button click to go back to the home screen
         """
         update_state(current_page="home_screen")

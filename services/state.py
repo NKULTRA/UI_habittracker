@@ -1,3 +1,7 @@
+"""
+script handles the list of global reactive values
+"""
+
 from shiny import reactive
 
 state = reactive.Value({

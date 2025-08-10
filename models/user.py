@@ -1,20 +1,19 @@
-from services.database import user_information, get_users, new_user, get_active_habits, delete_user
+from services.database import get_users, new_user, delete_user, get_active_habits
+from models.habit import Habit
 
 class User:
     def __init__(self, user_id, username):
         self.user_id = user_id
         self.username = username
-        self._habits = None
 
     @property
     def habits(self):
-        if self._habits is None:
-            self._habits = get_active_habits(self.user_id) or []
-        return self._habits
+        rows = get_active_habits(self.user_id) or []
+        return [Habit.from_row(r) for r in rows]
 
     @classmethod
     def get_all(cls):
-        return [cls(user_id, username) for user_id, username in get_users()]
+        return [cls(user_id, username) for (user_id, username) in get_users()]
 
     @classmethod
     def create(cls, username):
@@ -23,4 +22,3 @@ class User:
 
     def delete(self):
         delete_user(self.user_id)
-
