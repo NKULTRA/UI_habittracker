@@ -1,4 +1,4 @@
-from services.database import get_active_habits, get_habit, add_habit, edit_habit, archive_habit, delete_habit
+from services.database import get_active_habits, get_habit, add_habit, edit_habit, delete_habit, get_archived_habits
 
 
 class Habit:
@@ -43,8 +43,15 @@ class Habit:
         }
 
     @staticmethod
+    def full_list_by_user(user_id):
+        rows = get_active_habits(user_id)
+        rows += get_archived_habits(user_id)
+        
+        return [Habit.from_row(r) for r in rows]
+
+    @staticmethod
     def list_by_user(user_id):
-        rows = get_active_habits(user_id) or []
+        rows = get_active_habits(user_id)
         return [Habit.from_row(r) for r in rows]
 
     @staticmethod
@@ -57,23 +64,17 @@ class Habit:
         new_id = add_habit(user_id, habit_name, period_str, is_active)
         return Habit.get(new_id)
 
-    def update(self, *, habit_name = None, period_str = None, is_active = None, last_checked = None):
+    def update(self, habit_name, period_str, is_active):
+
         edit_habit(
             self.habit_id,
             habit_name=habit_name,
             period_str=period_str,
-            is_active=is_active,
-            last_checked=last_checked,
+            is_active=is_active
         )
 
         updated = Habit.get(self.habit_id)
-
-        self.__dict__ = updated.__dict__
-        return self
-
-    def archive(self):
-        archive_habit(self.habit_id)
-        self.is_active = 0
+        return updated
 
     def delete(self):
         delete_habit(self.habit_id)

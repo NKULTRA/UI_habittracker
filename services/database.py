@@ -322,46 +322,75 @@ def add_habit(user_id, habit_name, period_str, is_active):
         return cursor.lastrowid
 
 
-def archive_habit(habit_id):
-    """
-    When the user wants to archive a habit, 
-    this is equal to set IsActive = 0 in the habit table
-    
-    Parameters:
-    - habit_id: integer, ID of the habit
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE habits 
-            SET IsActive = 0
-            WHERE habitID = ?
-        """, (habit_id))
-
-        conn.commit()
-
-
-def edit_habit(user_id, habit_id, updates):
+def edit_habit(habit_id, habit_name, period_str, is_active):
     """
     When the user wants to edit a habit, this means updating one or more of
     its attributes in the habits table. Optionally, existing activities linked
     to the habit can be removed if its configuration changes.
 
     Parameters:
-    - user_id: integer, ID of the current user
     - habit_id: integer, ID of the habit
-    - updates: dict, mapping of column names to new values, e.g.
-               {"HabitName": "Read", "IsActive": 1, "periodtypeID": 2}
+    - habitname: string, old or edited name
+    - period_str: string, old or edited period
+    - is_active: integer, either archived = 0 or active = 1
     """
-    if not updates:
-        return 0
 
-    updates = dict(updates)
+    label, days = _normalize_period(period_str)
+    periodtype_id = get_or_create_periodtype(label, days)
 
-    period_changed = False
-    allowed_cols = {"HabitName", "periodtypeID", "IsActive", "LastChecked"}
+    with sqlite3.connect(DB_PATH) as conn:
+            
+        cursor = conn.execute("""
+            SELECT HabitName, periodtypeID, IsActive
+            FROM habits
+            WHERE habitID = ?
+            """,
+            (habit_id,),
+        )
 
-    return None
+        row = cursor.fetchone()
+
+        if row is None:
+            raise ValueError(f"Habit {habit_id} not found")
+        
+        old_name, old_period, old_active = row
+
+        structural = (habit_name != old_name) or (periodtype_id != old_period)
+        status_only = (not structural) and (is_active != old_active)
+        
+        # no changes to the previous entry, only clicked on save
+        if not structural and not status_only:
+            return get_habit(habit_id)
+
+
+        if structural:
+            try:
+                conn.execute("""
+                    UPDATE habits
+                    SET HabitName = ?, Periodtype = ?, IsActive = ?, LastChecked = NULL
+                    WHERE habitID = ?
+                    """,(habit_name, periodtype_id, int(is_active), habit_id))
+                
+            except sqlite3.IntegrityError as e:
+                raise ValueError(f"Habit name '{habit_name}' already exists for this user.") from e
+
+
+            conn.execute(
+                """
+                DELETE FROM activities 
+                WHERE habitID = ?
+                """, (habit_id,))
+
+        else:
+            conn.execute(
+                """
+                UPDATE habits 
+                SET IsActive = ? 
+                WHERE habitID = ?
+                """, (is_active, habit_id))
+                
+        return get_habit(habit_id)
+    
 
 
 def delete_habit(habit_id):
@@ -483,10 +512,24 @@ def get_archived_habits(user_id):
     - user_id: integer, ID of the current user
     """
     with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT habitID, HabitName
-            FROM habits
-            WHERE userID = ? AND IsActive = 0
+            SELECT
+                h.habitID,
+                h.userID,
+                h.HabitName,
+                h.periodtypeID,
+                h.DateCreated,
+                h.LastChecked,
+                h.IsActive,
+                pt.Periodtype,
+                pt.EqualsToDays
+            FROM habits h
+            JOIN periodtypes pt ON h.periodtypeID = pt.periodtypeID
+            WHERE h.userID = ? AND h.IsActive = 0
+            ORDER BY h.DateCreated, h.habitID
         """, (user_id,))
-        return cursor.fetchall()
+
+        return [dict(r) for r in cursor.fetchall()]

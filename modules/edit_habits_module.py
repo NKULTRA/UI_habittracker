@@ -77,7 +77,7 @@ def edit_habits_server(input, output, session):
         if user is None:
             return pd.DataFrame(columns=cols)
         
-        rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
+        rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
 
         if not rows:
             return pd.DataFrame(columns=cols)
@@ -111,21 +111,24 @@ def edit_habits_server(input, output, session):
             selected_habit_id.set(None)
             ui.update_text("habit_name", value="")
             ui.update_select("habit_period", selected="Daily")
+            ui.update_select("habit_status", selected="Active")
             ui.update_text("habit_custom", value="")
             return
         
         row = habits_df().iloc[sel[0]]
         selected_habit_id.set(int(row["habitID"]))
+        status = "Active" if row["IsActive"] == 1 else "Archived"
 
         ui.update_text("habit_name", value=row["HabitName"])
+        ui.update_select("habit_status", selected=status)
 
-        label = str(row.get("Periodtype") or "")
+        label = row.get("Periodtype")
 
-        if label.lower().startswith("every "):
+        if label not in ("Daily", "Weekly", "Monthly", "Yearly"):
             ui.update_select("habit_period", selected="Custom")
             ui.update_text("habit_custom", value=label)
         else:
-            ui.update_select("habit_period", selected=label if label else "Daily")
+            ui.update_select("habit_period", selected=label)
 
 
     @reactive.effect
@@ -160,7 +163,7 @@ def edit_habits_server(input, output, session):
             except Exception as e:
                 # here maybe better understandable messages
                 ui.notification_show(f"Could not create habit: {e}", type="error")
-                return
+                return 
         else:
             h = Habit.get(selected_habit_id())
             if not h:
@@ -176,24 +179,6 @@ def edit_habits_server(input, output, session):
         selected_habit_id.set(None)
         ui.notification_show("Saved.", type="message")
 
-    @reactive.effect
-    @reactive.event(input.archive_habit)
-    def _archive():
-        """
-        handles the user action when the user selects habit in the status list
-        """
-
-        if selected_habit_id() is None:
-            ui.notification_show("Select a habit to archive.", type="warning")
-            return
-        
-        h = Habit.get(selected_habit_id())
-        
-        h.archive()
-        _refresh_table.set(_refresh_table() + 1)
-        selected_habit_id.set(None)
-
-        ui.notification_show("Archived.", type="message")
 
     @reactive.effect
     @reactive.event(input.delete_habit)
