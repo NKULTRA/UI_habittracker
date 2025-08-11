@@ -19,7 +19,7 @@ def habit_analytics_ui():
             
             ui.card(
                 {"class": "home-buttons"},
-                ui.input_action_button("home_sc", "Back to the home screen")
+                ui.input_action_button("analytics_home", "Back to the home screen")
             )
             )
         )
@@ -29,7 +29,7 @@ def habit_analytics_ui():
 def habit_analytics_server(input, output, session):
 
     @reactive.Effect
-    @reactive.event(input.home_sc)
+    @reactive.event(input.analytics_home)
     def _():
         """
         handles the button click to go back to the home screen

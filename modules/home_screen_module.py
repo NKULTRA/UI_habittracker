@@ -4,6 +4,8 @@ The home screen
 """
 from shiny import render, ui, reactive
 from services.state import state, update_state
+import pandas as pd
+from models.habit import Habit
 
 
 def home_screen_ui():
@@ -15,7 +17,8 @@ def home_screen_ui():
             ui.card(
                 {"class": "home-table"},
                 ui.h4("Your Habits"),
-                ui.output_ui("habits_display")
+                ui.output_ui("habits_display"),
+                ui.output_data_frame("habits_tbl_home")
             ),
             
             # Buttons on the right side of the UI
@@ -31,32 +34,41 @@ def home_screen_ui():
 
 
 def home_screen_server(input, output, session):
+
+    @reactive.Calc
+    def habits_df():
+        user = state()["current_user"]
+        cols = ["habitID","HabitName","Periodtype","IsActive","LastChecked"]
+
+        if user is None:
+            return pd.DataFrame(columns=cols)
+
+        rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
+
+        if not rows:
+            return pd.DataFrame(columns=cols)
+
+        return pd.DataFrame(rows)[cols]
+    
     @output
     @render.ui
     def habits_display():
-        """
-        creates the habits table on the left of the UI
-        """
-        user = state()["current_user"]
-        
-        # server functions are recalled, even when not on this screen, 
-        # this leads to an error-message when returning to the user_selection screen
-        if user is None:
-            return
-        
-        if not user.habits:
+        if habits_df().empty:
             return ui.p("No habits yet - create your first one through the 'Edit habits' button on the right.")
-        else:
-            return ui.output_table("habits_table")
+        return None 
     
     @output
-    @render.table
-    def habits_table():
-        """
-        loads the habits when there are any
-        """
-        return [{"Habit" : x} for x in state()["current_user"].habits]
-    
+    @render.data_frame
+    def habits_tbl_home():
+        if habits_df().empty:
+            return None
+        return render.DataTable(
+            habits_df(), 
+            selection_mode="none",
+            editable=False
+        )
+
+
     @reactive.Effect
     @reactive.event(input.user_selection)
     def _():
@@ -69,7 +81,7 @@ def home_screen_server(input, output, session):
         )
 
     @reactive.Effect
-    @reactive.event(input.edit_habits)
+    @reactive.event(input.edit_habits, ignore_init=True)
     def _():
         """
         handles the button click on edit habits
@@ -77,7 +89,7 @@ def home_screen_server(input, output, session):
         update_state(current_page="edit_habits")
 
     @reactive.Effect
-    @reactive.event(input.analyze_habits)
+    @reactive.event(input.analyze_habits, ignore_init=True)
     def _():
         """
         handles the button click on analyze habits

@@ -4,6 +4,7 @@ Script handles the database setup
 from config import DB_PATH
 
 import sqlite3
+import re
 
 
 def setup_database():
@@ -144,7 +145,7 @@ def _normalize_period(period_str):
     - period_str: string, period entered by the user
 
     """
-    if int(period_str):
+    if bool(re.fullmatch(r"\d+", period_str.strip())):
         n = int(period_str)
         return (f"every {n} days", n)
     
@@ -298,7 +299,7 @@ def get_users():
 
 # ------------ start of habit specific methods -------------
 
-def add_habit(user_id, habit_name, period_str, is_active = 1):
+def add_habit(user_id, habit_name, period_str, is_active):
     """
     Adds a row to the given table.
 
@@ -315,7 +316,8 @@ def add_habit(user_id, habit_name, period_str, is_active = 1):
         cursor.execute("""
             INSERT INTO habits (userID, periodtypeID, HabitName, IsActive)
             VALUES (?, ?, ?, ?)
-        """, (user_id, periodtype_id, habit_name.strip(), int(is_active)))
+        """, (user_id, periodtype_id, habit_name, is_active))
+
         conn.commit()
         return cursor.lastrowid
 

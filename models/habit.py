@@ -75,5 +75,5 @@ class Habit:
         archive_habit(self.habit_id)
         self.is_active = 0
 
-    def delete(self, *, delete_activities = True):
-        delete_habit(self.habit_id, delete_activities=delete_activities)
+    def delete(self):
+        delete_habit(self.habit_id)

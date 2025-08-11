@@ -34,7 +34,10 @@ app_ui = ui.page_fluid(
 
 def server(input, output, session):
 
+    
     initialized_modules = set()
+    _last_page = reactive.Value(None)
+
 
     @output
     @render.ui
@@ -50,10 +53,15 @@ def server(input, output, session):
         elif page == "analyze_habits":
             return habit_analytics_module.habit_analytics_ui()
 
-    @reactive.Effect
+
+    @reactive.effect
     def run_server_logic():
         page = state()["current_page"]
         
+        if _last_page.get() == page:
+            return
+        _last_page.set(page)
+
         if page not in initialized_modules:
             if page == "user_selection":
                 user_selection_module.user_selection_server(input, output, session)

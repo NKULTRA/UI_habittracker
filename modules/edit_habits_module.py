@@ -22,25 +22,22 @@ def edit_habits_ui():
                 ui.h4("Edit / Add Habit"),
                 ui.input_text("habit_name", "Habit name"),
                 ui.input_select(
+                    "habit_status",
+                    "Status",
+                    choices=["Archived", "Active"],
+                    selected="Active"
+                ),
+                ui.input_select(
                     "habit_period",
                     "Period",
-                    choices=["Daily", "Weekly", "Monthly", "Yearly", "Custom..."],
+                    choices=["Daily", "Weekly", "Monthly", "Yearly", "Custom"],
                     selected="Daily",
                 ),
-                ui.input_text(
-                    "habit_custom",
-                    "Custom period (e.g. for every 10 days, just type the number 10)",
-                    placeholder="Only if 'Custom...' above",
-                ),
-                ui.input_checkbox(
-                    "habit_archived", 
-                    "Archived (activate to archive a habit)", 
-                    value=True),
+                ui.output_ui("conditional_text"),
                 ui.div(
-                    {"class": "edit-buttons"},
                     ui.input_action_button("save_habit", "Save changes"),
-                    ui.input_action_button("new_habit", "New"),
                     ui.input_action_button("delete_habit", "Delete"),
+                    ui.input_action_button("delete_user", "Delete User"),
                     ui.input_action_button("home_sc", "Back"),
                 )
             ),
@@ -48,25 +45,52 @@ def edit_habits_ui():
     )
 
 def edit_habits_server(input, output, session):
-    current_user = state()["current_user"]
-    selected_habit_id = reactive.Value(None)
 
-    def load_df():
-        habits = Habit.list_by_user(current_user.user_id)
-        rows = [h.to_dict() for h in habits]
+    selected_habit_id = reactive.Value(None)
+    _refresh_table = reactive.Value(0)
+
+    @output
+    @render.ui
+    def conditional_text():
+        """
+        the custom range field should only be visible when the choice is done by the user
+        """
+        if input.habit_period() == "Custom":
+            return ui.input_text(
+                "habit_custom",
+                "Custom period (e.g. for every 10 days, just type the number 10)",
+                placeholder="Custom range...."
+            )
+        return None
+
+
+    @reactive.Calc
+    def habits_df():
+        """
+        creates the habit df from the database when there are any
+        """
+        user = state()["current_user"]
+        _ = _refresh_table()
+
+        cols = ["habitID", "HabitName", "Periodtype", "IsActive", "LastChecked"]
+
+        if user is None:
+            return pd.DataFrame(columns=cols)
+        
+        rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
 
         if not rows:
-            return pd.DataFrame(columns=["habitID","HabitName","Periodtype","IsActive","LastChecked"])
-        
-        df = pd.DataFrame(rows)
-        return df[["habitID","HabitName","Periodtype","IsActive","LastChecked"]]
-    
-    habits_df = reactive.Value(load_df())
+            return pd.DataFrame(columns=cols)
+
+        return pd.DataFrame(rows)[cols]
 
 
     @output
     @render.data_frame
     def habit_table():
+        """
+        renders the habits_df as a Datatable, with this form it is possible to select rows
+        """
         return render.DataTable(
             habits_df(), 
             selection_mode="row", 
@@ -76,52 +100,55 @@ def edit_habits_server(input, output, session):
 
     @reactive.effect
     def _on_select_row():
+        """
+        handles the user click on one of the habits
+        """
 
         sel = input.habit_table_selected_rows()
-        if not sel:
+        df = habits_df()
+
+        if not sel or df.empty:
+            selected_habit_id.set(None)
+            ui.update_text("habit_name", value="")
+            ui.update_select("habit_period", selected="Daily")
+            ui.update_text("habit_custom", value="")
             return
         
         row = habits_df().iloc[sel[0]]
         selected_habit_id.set(int(row["habitID"]))
 
         ui.update_text("habit_name", value=row["HabitName"])
-        ui.update_checkbox("habit_active", value=bool(row["IsActive"]))
 
         label = str(row.get("Periodtype") or "")
 
         if label.lower().startswith("every "):
-            ui.update_select("habit_period", selected="Custom...")
+            ui.update_select("habit_period", selected="Custom")
             ui.update_text("habit_custom", value=label)
         else:
             ui.update_select("habit_period", selected=label if label else "Daily")
-            ui.update_text("habit_custom", value="")
-
-
-    @reactive.effect
-    @reactive.event(input.new_habit)
-    def _new():
-        selected_habit_id.set(None)
-        ui.update_text("habit_name", value="")
-        ui.update_select("habit_period", selected="Daily")
-        ui.update_text("habit_custom", value="")
-        ui.update_checkbox("habit_active", value=True)
 
 
     @reactive.effect
     @reactive.event(input.save_habit)
     def _save():
-        name = (input.habit_name() or "").strip()
+        """
+        handles what happens when the user clicks on the 'Save Changes' button
+        it creates either a new habit in the database or updates an existing one
+        """
+        user = state()["current_user"]
+        name = input.habit_name().strip()
+
         if not name:
             ui.notification_show("Habit name is required.", type="error")
             return
+        
         period_sel = input.habit_period()
-        custom = (input.habit_custom() or "").strip()
-        is_active = 1 if input.habit_active() else 0
+        is_active = 1 if input.habit_status() == "Active" else 0
 
-
-        if period_sel == "Custom...":
+        if period_sel == "Custom":
+            custom = input.habit_custom()
             if not custom:
-                ui.notification_show("Enter a custom period like 'every 10 days'.", type="error")
+                ui.notification_show("Enter a custom period through just a number (like 10)", type="error")
                 return
             period_str = custom
         else:
@@ -129,8 +156,9 @@ def edit_habits_server(input, output, session):
 
         if selected_habit_id() is None:
             try:
-                Habit.create(current_user.user_id, name, period_str, is_active)
+                Habit.create(user.user_id, name, period_str, is_active)
             except Exception as e:
+                # here maybe better understandable messages
                 ui.notification_show(f"Could not create habit: {e}", type="error")
                 return
         else:
@@ -143,24 +171,28 @@ def edit_habits_server(input, output, session):
             except Exception as e:
                 ui.notification_show(f"Could not update habit: {e}", type="error")
                 return
-
-        habits_df(load_df())
+            
+        _refresh_table.set(_refresh_table() + 1)
         selected_habit_id.set(None)
         ui.notification_show("Saved.", type="message")
 
     @reactive.effect
     @reactive.event(input.archive_habit)
     def _archive():
+        """
+        handles the user action when the user selects habit in the status list
+        """
+
         if selected_habit_id() is None:
             ui.notification_show("Select a habit to archive.", type="warning")
             return
+        
         h = Habit.get(selected_habit_id())
-        if not h:
-            ui.notification_show("Selected habit no longer exists.", type="warning")
-            return
+        
         h.archive()
-        habits_df(load_df())
+        _refresh_table.set(_refresh_table() + 1)
         selected_habit_id.set(None)
+
         ui.notification_show("Archived.", type="message")
 
     @reactive.effect
@@ -169,7 +201,7 @@ def edit_habits_server(input, output, session):
         if selected_habit_id() is None:
             ui.notification_show("Select a habit to delete.", type="warning")
             return
-        # tiny confirm modal
+        
         ui.modal_show(
             ui.modal(
                 f"Delete this habit permanently?",
@@ -182,7 +214,42 @@ def edit_habits_server(input, output, session):
         )
 
 
-    # above here to be adjusted
+    @reactive.Effect
+    @reactive.event(input.confirm_delete_habit)
+    def delete_habit():
+        """
+        handles the 'Yes, delete' button click inside the notification when the user clicks on 
+        delete the habit
+
+        This leads to the deletion of the habit inside the database
+        """
+        if selected_habit_id() is None:
+            ui.modal_remove()
+            return
+
+        h = Habit.get(selected_habit_id())
+        if h:
+            try:
+                h.delete() 
+                ui.notification_show("Habit deleted.", type="message")
+            except Exception as e:
+                ui.notification_show(f"Delete failed: {e}", type="error")
+                return
+
+        _refresh_table.set(_refresh_table() + 1)
+        selected_habit_id.set(None)
+        ui.modal_remove()
+
+
+    @reactive.Effect
+    @reactive.event(input.cancel_delete_habit)
+    def close_modal():
+        """
+        handles the 'cancel' button click inside the notification when the user clicks on 
+        delete the current user
+        """
+        ui.modal_remove()
+
 
     @reactive.Effect
     @reactive.event(input.delete_user)
@@ -215,6 +282,7 @@ def edit_habits_server(input, output, session):
             user.delete()
         ui.modal_remove()
         update_state(current_page = "user_selection", refresh_user =+ 1)
+
 
     @reactive.Effect
     @reactive.event(input.cancel_delete)
