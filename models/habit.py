@@ -99,7 +99,7 @@ class Habit:
         out = {}
 
         for h in habits:
-            hid = h["habitID"]
+            hid = str(h["habitID"])
 
             days = int(h["EqualsToDays"])
             checks = checks_map.get(hid, [])

@@ -76,7 +76,7 @@ def home_screen_server(input, output, session):
 
             label_tuple = (name, hid, streak) 
 
-            window_start = today - timedelta(days=eq_days - 1)
+            window_start = today - timedelta(days = eq_days - 1)
 
             if last_dt is None or last_dt.date() < window_start:
                 due.append(label_tuple)
@@ -94,10 +94,8 @@ def home_screen_server(input, output, session):
         if not due and not optional:
             return ui.p("Currently no habits to check. Check your list of habits under the 'EDIT HABITS' - screen.")
         
-        due_choices = {str(hid): f"{name} (current streak: {streak})" for (name, streak, hid) in due}
-        opt_choices = {str(hid): f"{name} (current streak: {streak})" for (name, streak, hid) in optional}
-        print(due_choices)
-        print(opt_choices)
+        due_choices = {str(hid): f"{name} (current streak: {streak})" for (name, hid, streak) in due}
+        opt_choices = {str(hid): f"{name} (current streak: {streak})" for (name, hid, streak) in optional}
 
         return ui.div(
             ui.card(
