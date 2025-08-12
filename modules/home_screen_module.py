@@ -15,20 +15,20 @@ def home_screen_ui():
             ui.div(
                 {"class": "home-container"},
                 # habits table on the left of the UI
-            ui.card(
-                {"class": "home-table"},
-                ui.h4("Your Habits"),
-                ui.output_ui("home_checks"),
-                ui.output_ui("habits_display")
-            ),
-            
-            # Buttons on the right side of the UI
-            ui.card(
-                {"class": "home-buttons"},
-                ui.input_action_button("edit_habits", "Edit Habits"),
-                ui.input_action_button("analyze_habits", "Analyze Habits"),
-                ui.input_action_button("user_selection", "Back to user selection")
-            )
+                ui.card(
+                    {"class": "home-table"},
+                    ui.h4("Your Habits"),
+                    ui.output_ui("home_checks"),
+                    ui.output_ui("habits_display")
+                ),
+                
+                # Buttons on the right side of the UI
+                ui.card(
+                    {"class": "home-buttons"},
+                    ui.input_action_button("edit_habits", "Edit Habits"),
+                    ui.input_action_button("analyze_habits", "Analyze Habits"),
+                    ui.input_action_button("user_selection", "Back to user selection")
+                )
             )
         )
     )
@@ -40,12 +40,18 @@ def home_screen_server(input, output, session):
 
     @reactive.Calc
     def _habits_for_home():
+        """
+        creates the basis for the visible habits on the homescreen
+        seperates into habits which are due today or optional habits, which can be checked but
+        it isnt necessary to do so today (weekly and the due date is not yet reached)
+        """
         user = state()["current_user"]
         _ = refresh_habits()
 
         if user is None:
             return [], []
 
+        # get all active habits for the current user
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
 
         if not rows:
@@ -53,15 +59,18 @@ def home_screen_server(input, output, session):
 
         today = date.today()
 
+        # get the streaks for all habits for the current user
         streak_map = Habit.streaks_by_user(user.user_id)
 
         due, optional = [], []
 
+        # create a template to use for each habit
         for r in rows:
             hid  = r["habitID"]
             name = r["HabitName"]
             streak = int(streak_map.get(hid, 0))
 
+            # fallback for error handling
             try:
                 eq_days = max(1, int(r.get("EqualsToDays") or 1))
             except (TypeError, ValueError):
@@ -69,13 +78,17 @@ def home_screen_server(input, output, session):
 
             last_checked = r.get("LastChecked")
 
+            # fallback for error handling
             try:
                 last_dt = last_checked if isinstance(last_checked, datetime) else (datetime.fromisoformat(str(last_checked)) if last_checked else None)
             except Exception:
                 last_dt = None
 
+            # basis for the output 
+            # Habitname, habitID and the streak
             label_tuple = (name, hid, streak) 
 
+            # daily habits which are checked today shouldnt show up under optional again
             window_start = today - timedelta(days = eq_days - 1)
 
             if last_dt is None or last_dt.date() < window_start:
@@ -89,6 +102,10 @@ def home_screen_server(input, output, session):
     @output
     @render.ui
     def habits_display():
+        """
+        returns the div for the output including due habits & optional habits
+        builds up on the tuple generated in _habits_for_home()
+        """
         due, optional = _habits_for_home()
 
         if not due and not optional:
@@ -112,10 +129,14 @@ def home_screen_server(input, output, session):
     @reactive.Effect
     @reactive.event(input.home_mark_done)
     def _mark_done():
+        """
+        handles the click on the button to Mark the selected habits as done
+        """
         user = state()["current_user"]
         if user is None:
             return
 
+        # if the user clicks the button without anything checked
         selected = set(input.home_due() or []) | set(input.home_opt() or [])
         if not selected:
             ui.notification_show("Nothing selected.", type="warning")

@@ -8,7 +8,10 @@ from models.habit import Habit
 from services.database import get_checks_for_habits
 from datetime import datetime
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+import matplotlib.dates as mdates
 
 
 def habit_analytics_ui():
@@ -36,14 +39,13 @@ def habit_analytics_ui():
 
 def habit_analytics_server(input, output, session):
 
-
     @reactive.Calc
     def _active_habits_rows():
         """
-        Active habits as list[dict]. Expects Habit.list_by_user() to include
-        Periodtype and EqualsToDays via the join to periodtypes.
+        loads the active habits from the current user and returns them as a list of dict
         """
         user = state()["current_user"]
+
         if user is None:
             return []
         return [h.to_dict() for h in Habit.list_by_user(user.user_id)]
@@ -99,15 +101,47 @@ def habit_analytics_server(input, output, session):
             ax.axis("off")
             return fig
 
-        fig, ax = plt.subplots()
-        for name, g in df.groupby("HabitName"):
-            ax.plot(g["date"], g["streak"], marker="o", label=name)
+        df = df.copy()
 
-        ax.set_xlabel("Date")
-        ax.set_ylabel("Streak")
-        ax.set_title("Streaks over time")
-        ax.legend(loc="best")
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.sort_values(["HabitName", "date"])
+
+        n_dates = df["date"].nunique()
+
+        if n_dates <= 20:
+            k = n_dates                  
+        elif n_dates <= 60:
+            k = 30                    
+        elif n_dates <= 150:
+            k = 60                       
+        else:
+            k = 90                  
+
+        last_unique = np.sort(df["date"].unique())[-k:]
+        df = df[df["date"].isin(last_unique)]
+
+        fig, ax = plt.subplots()
+
+        habits = df["HabitName"].unique()
+        jitter_amount = 0.15 
+
+        for _, name in enumerate(habits):
+            g = df[df["HabitName"] == name]
+            jitter = np.random.uniform(-jitter_amount, jitter_amount, size=len(g))
+            ax.plot(g["date"], g["streak"] + jitter, marker="o", label=name, linestyle='-')
+
+
+        max_streak = int(df["streak"].max())
+        upper = max_streak + 3
+        ax.set_ylim(0, max(upper, 1))  
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True)) 
+
+        ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+        ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
         fig.autofmt_xdate()
+
+        ax.legend(loc="best")
+        ax.grid(True, axis="y", linestyle=":", linewidth=0.8)
         return fig
 
 

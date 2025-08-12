@@ -62,7 +62,7 @@ def edit_habits_server(input, output, session):
         user = state()["current_user"]
         _ = _refresh_table()
 
-        cols = ["habitID","HabitName","Periodtype","IsActive","LastChecked"]
+        cols = ["habitID","HabitName","Periodtype","IsActive", "DateCreated", "LastChecked"]
 
         if user is None:
             return pd.DataFrame(columns=cols)
@@ -79,7 +79,7 @@ def edit_habits_server(input, output, session):
         raw = habits_raw_df().copy()
 
         if raw.empty:
-            return pd.DataFrame(columns=["Habit Name","Period","Status","Last Checked"])
+            return pd.DataFrame(columns=["Habit Name","Period","Status", "Created at","Last Checked"])
 
         raw["IsActive"] = raw["IsActive"].map({1: "Active", 0: "Archived"})
 
@@ -87,10 +87,11 @@ def edit_habits_server(input, output, session):
             "HabitName": "Habit Name",
             "Periodtype": "Period",
             "IsActive": "Status",
+            "DateCreated": "Created at",
             "LastChecked": "Last Checked",
         }, inplace=True)
 
-        return raw[["Habit Name","Period","Status","Last Checked"]]
+        return raw[["Habit Name","Period","Status","Created at","Last Checked"]]
 
 
     @output
