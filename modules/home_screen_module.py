@@ -4,7 +4,7 @@ The home screen
 """
 from shiny import render, ui, reactive
 from services.state import state, update_state
-from services.database import mark_habit_as_checked, get_checks_for_habits
+from services.database import mark_habit_as_checked
 from models.habit import Habit
 from datetime import datetime, date, timedelta
 
@@ -143,7 +143,7 @@ def home_screen_server(input, output, session):
 
     @reactive.Effect
     @reactive.event(input.user_selection)
-    def _():
+    def home_go_sel():
         """
         handles the button to go back to the user selection
         """
@@ -154,7 +154,7 @@ def home_screen_server(input, output, session):
 
     @reactive.Effect
     @reactive.event(input.edit_habits, ignore_init=True)
-    def _():
+    def home_go_edit():
         """
         handles the button click on edit habits
         """
@@ -162,7 +162,7 @@ def home_screen_server(input, output, session):
 
     @reactive.Effect
     @reactive.event(input.analyze_habits, ignore_init=True)
-    def _():
+    def home_go_analyze():
         """
         handles the button click on analyze habits
         """

@@ -21,19 +21,13 @@ def edit_habits_ui():
             ui.card(
                 {"class": "edit-form"},
                 ui.h4("Edit / Add Habit"),
-                ui.input_text("habit_name", "Habit name"),
-                ui.input_select(
-                    "habit_status",
-                    "Status",
-                    choices=["Archived", "Active"],
-                    selected="Active"
-                ),
+                ui.input_text("habit_name", "Habit Name"),
                 ui.input_select(
                     "habit_period",
                     "Period",
                     choices=["Daily", "Weekly", "Monthly", "Yearly", "Custom"],
                     selected="Daily"
-                ),
+                ),                
                 ui.panel_conditional(
                     "input.habit_period === 'Custom'",
                     ui.input_text(
@@ -41,6 +35,12 @@ def edit_habits_ui():
                         "Custom period (e.g. enter 10 for 'every 10 days')",
                         placeholder="Custom range…"
                     ),
+                ),
+                ui.input_select(
+                    "habit_status",
+                    "Status",
+                    choices=["Archived", "Active"],
+                    selected="Active"
                 ),
                 ui.div(
                     ui.input_action_button("save_habit", "Save changes"),
@@ -105,6 +105,12 @@ def edit_habits_server(input, output, session):
             editable=False
             )
 
+    def reset_form():
+        selected_habit_id.set(None)
+        ui.update_text("habit_name", value="")
+        ui.update_select("habit_period", selected="Daily")
+        ui.update_select("habit_status", selected="Active")
+        ui.update_text("habit_custom", value="")
 
     @reactive.effect
     def _on_select_row():
@@ -117,14 +123,15 @@ def edit_habits_server(input, output, session):
         df_raw  = habits_raw_df()
 
         if not sel or df_disp.empty:
-            selected_habit_id.set(None)
-            ui.update_text("habit_name", value="")
-            ui.update_select("habit_period", selected="Daily")
-            ui.update_select("habit_status", selected="Active")
-            ui.update_text("habit_custom", value="")
+            reset_form()
             return
 
         idx = sel[0]
+
+        if idx is None or idx < 0 or idx >= len(df_disp) or idx >= len(df_raw):
+            reset_form()
+            return
+
         hid = int(df_raw.iloc[idx]["habitID"])
         selected_habit_id.set(hid)
 
@@ -233,6 +240,7 @@ def edit_habits_server(input, output, session):
                 return
 
         _refresh_table.set(_refresh_table() + 1)
+        reset_form()
         selected_habit_id.set(None)
         ui.modal_remove()
 
@@ -293,7 +301,7 @@ def edit_habits_server(input, output, session):
 
     @reactive.Effect
     @reactive.event(input.home_sc)
-    def _():
+    def edit_go_home():
         """
         handles the button click to go back to the home screen
         """

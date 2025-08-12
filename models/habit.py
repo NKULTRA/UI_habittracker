@@ -130,7 +130,7 @@ class Habit:
         window_end = today
 
         while True:
-            window_start = window_end - timedelta(days=eq_days - 1)
+            window_start = window_end - timedelta(days = eq_days - 1)
             has_check = any(window_start <= d <= window_end for d in days)
 
             if not has_check:
