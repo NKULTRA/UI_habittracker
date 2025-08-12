@@ -5,12 +5,13 @@ from config import DB_PATH
 
 import sqlite3
 import re
+from datetime import datetime
+from collections import defaultdict
 
 
 def setup_database():
     """
     Create all tables for the habittracker application if they don't exist
-    additionally a view for calculating the streaks
     """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
@@ -57,82 +58,37 @@ def setup_database():
             CREATE TABLE IF NOT EXISTS activities (
                 activityID INTEGER PRIMARY KEY AUTOINCREMENT,
                 habitID INTEGER NOT NULL,
-                activitytypeID INTEGER NOT NULL,
+                activity_type TEXT NOT NULL CHECK (activity_type IN (
+                        'check','create','edit','archive','unarchive','rename','period_change')),
                 ActivityDate TIMESTAMP,
                 DateCreated TIMESTAMP,
-                FOREIGN KEY (habitID) REFERENCES habits(habitID),
-                FOREIGN KEY (activitytypeID) REFERENCES activitytypes(activitytypeID)
+                FOREIGN KEY (habitID) REFERENCES habits(habitID)
             )
         """)
 
-        # create activitytypes table
+        # ---------create indices for faster lookups---------------
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS activitytypes (
-                activitytypeID INTEGER PRIMARY KEY AUTOINCREMENT,
-                ActivityName TEXT UNIQUE NOT NULL
-            )
+            CREATE INDEX IF NOT EXISTS idx_habits_user_active
+            ON habits(userID, IsActive)
         """)
 
-        # create a view for the streaks
         cursor.execute("""
-            CREATE VIEW IF NOT EXISTS streaks AS
-                WITH ordered_checks AS (
-                    SELECT
-                        a.habitID,
-                        a.ActivityDate,
-                        pt.EqualsToDays,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY a.habitID
-                            ORDER BY a.ActivityDate DESC
-                        ) AS rn,
-                        LAG(a.ActivityDate) OVER (
-                            PARTITION BY a.habitID
-                            ORDER BY a.ActivityDate DESC
-                        ) AS prev_check
-                    FROM activities a
-                    JOIN activitytypes at ON a.activitytypeID = at.activitytypeID
-                    JOIN habits h ON a.habitID = h.habitID
-                    JOIN periodtypes pt ON h.periodtypeID = pt.periodtypeID
-                    WHERE at.ActivityName = 'check'
-                ),
-                streak_flags AS (
-                    SELECT
-                        habitID,
-                        ActivityDate,
-                        rn,
-                        CASE
-                            WHEN prev_check IS NULL THEN 1
-                            WHEN JULIANDAY(prev_check) - JULIANDAY(ActivityDate) <= EqualsToDays
-                            THEN 1 ELSE 0
-                        END AS in_streak
-                    FROM ordered_checks
-                ),
-                broken_streaks AS (
-                    SELECT
-                        habitID,
-                        rn,
-                        ActivityDate,
-                        in_streak,
-                        SUM(CASE WHEN in_streak = 0 THEN 1 ELSE 0 END)
-                            OVER (PARTITION BY habitID ORDER BY rn) AS streak_group
-                    FROM streak_flags
-                )
-            SELECT
-                h.habitID,
-                h.HabitName,
-                u.Username,
-                pt.Periodtype,
-                COUNT(*) AS current_streak
-            FROM broken_streaks bs
-            JOIN habits h ON bs.habitID = h.habitID
-            JOIN user u ON h.userID = u.userID
-            JOIN periodtypes pt ON h.periodtypeID = pt.periodtypeID
-            WHERE bs.streak_group = 0
-            AND h.IsActive = 1
-            GROUP BY h.habitID;
+            CREATE INDEX IF NOT EXISTS idx_habits_periodtype
+            ON habits(periodtypeID)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_periodtypes_eqdays
+            ON periodtypes(EqualsToDays)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_activities_habit_type_date
+            ON activities(habitID, activity_type, ActivityDate)
         """)
 
         conn.commit()
+
 
 # ----------------- helper functions -------------------
 def _normalize_period(period_str):
@@ -167,7 +123,11 @@ def _normalize_period(period_str):
 def get_or_create_periodtype(period_label, equals_to_days):
     """
     Returns periodtypeID for a given label or 
-    creates it if missing.
+    creates it if missing
+
+    Parameters:
+    - period_label: string, name of the selected period (e.g. Daily, Custom, etc.)
+    - equals_to_days: integer, number of days which represent this period (e.g. Daily = 1)
     """
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
@@ -313,13 +273,20 @@ def add_habit(user_id, habit_name, period_str, is_active):
 
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
+
         cursor.execute("""
-            INSERT INTO habits (userID, periodtypeID, HabitName, IsActive)
-            VALUES (?, ?, ?, ?)
-        """, (user_id, periodtype_id, habit_name, is_active))
+            INSERT INTO habits (userID, periodtypeID, HabitName, IsActive, LastChecked)
+            VALUES (?, ?, ?, ?, NULL)
+        """, (user_id, periodtype_id, habit_name, int(is_active)))
+        hid = cursor.lastrowid
+
+        cursor.execute("""
+            INSERT INTO activities (habitID, activity_type)
+            VALUES (?, 'create')
+        """, (hid,))
 
         conn.commit()
-        return cursor.lastrowid
+        return hid
 
 
 def edit_habit(habit_id, habit_name, period_str, is_active):
@@ -334,64 +301,60 @@ def edit_habit(habit_id, habit_name, period_str, is_active):
     - period_str: string, old or edited period
     - is_active: integer, either archived = 0 or active = 1
     """
-
     label, days = _normalize_period(period_str)
     periodtype_id = get_or_create_periodtype(label, days)
 
     with sqlite3.connect(DB_PATH) as conn:
-            
+
         cursor = conn.execute("""
-            SELECT HabitName, periodtypeID, IsActive
-            FROM habits
-            WHERE habitID = ?
-            """,
-            (habit_id,),
-        )
+                SELECT HabitName, periodtypeID, IsActive
+                FROM habits
+                WHERE habitID = ?
+            """,(habit_id,))
 
         row = cursor.fetchone()
 
         if row is None:
             raise ValueError(f"Habit {habit_id} not found")
-        
-        old_name, old_period, old_active = row
 
-        structural = (habit_name != old_name) or (periodtype_id != old_period)
+        old_name, old_periodtype_id, old_active = row
+
+        structural = (habit_name != old_name) or (periodtype_id != old_periodtype_id)
         status_only = (not structural) and (is_active != old_active)
-        
-        # no changes to the previous entry, only clicked on save
+
+        # No effective change
         if not structural and not status_only:
             return get_habit(habit_id)
 
-
         if structural:
             try:
-                conn.execute("""
+                conn.execute(
+                    """
                     UPDATE habits
-                    SET HabitName = ?, Periodtype = ?, IsActive = ?, LastChecked = NULL
+                    SET HabitName = ?, periodtypeID = ?, IsActive = ?, LastChecked = NULL
                     WHERE habitID = ?
-                    """,(habit_name, periodtype_id, int(is_active), habit_id))
-                
+                    """,
+                    (habit_name, periodtype_id, int(is_active), habit_id),
+                )
             except sqlite3.IntegrityError as e:
+                # UNIQUE(userID, HabitName) violation most likely
                 raise ValueError(f"Habit name '{habit_name}' already exists for this user.") from e
 
-
-            conn.execute(
-                """
-                DELETE FROM activities 
-                WHERE habitID = ?
-                """, (habit_id,))
+            conn.execute("""
+                    DELETE FROM activities 
+                    WHERE habitID = ?
+                """,(habit_id,))
 
         else:
-            conn.execute(
-                """
+            # Only status changed (archive/unarchive)
+            conn.execute("""
                 UPDATE habits 
                 SET IsActive = ? 
                 WHERE habitID = ?
-                """, (is_active, habit_id))
-                
+            """,(is_active, habit_id))
+
         return get_habit(habit_id)
     
-
 
 def delete_habit(habit_id):
     """
@@ -533,3 +496,59 @@ def get_archived_habits(user_id):
         """, (user_id,))
 
         return [dict(r) for r in cursor.fetchall()]
+
+
+def mark_habit_as_checked(habit_id):
+    """
+    Records a completion/check for 'now' and updates LastChecked on the habit
+    
+    Parameters:
+    - habit_id: integer, ID of the selected habit
+    """
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO activities (habitID, activity_type, ActivityDate)
+            VALUES (?, 'check', ?)
+        """, (habit_id, now))
+
+        cursor.execute("""
+            UPDATE habits
+            SET LastChecked = ?
+            WHERE habitID = ?
+        """, (now, habit_id))
+
+        conn.commit()
+
+
+def get_checks_for_habits(habit_id_list):
+    """
+    Get all checks for a habit
+    
+    Parameters:
+    - habit_id_list: list, array of various habit ids for which the checks need to be known
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute(
+            f"""
+            SELECT habitID, DATE(ActivityDate) AS d
+            FROM activities
+            WHERE habitID IN ({",".join(["?"] * len(habit_id_list))})
+              AND activity_type = 'check'
+            GROUP BY habitID, d
+            ORDER BY habitID, d DESC
+            """,
+            habit_id_list,
+        )
+
+        out = defaultdict(list)
+        for row in cursor.fetchall():
+            out[row["habitID"]].append(row["d"])
+
+        return {hid: out.get(hid, []) for hid in habit_id_list}

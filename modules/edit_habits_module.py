@@ -6,6 +6,7 @@ from shiny import render, ui, reactive
 from services.state import state, update_state
 import pandas as pd
 from models.habit import Habit
+import re
 
 
 def edit_habits_ui():
@@ -31,9 +32,16 @@ def edit_habits_ui():
                     "habit_period",
                     "Period",
                     choices=["Daily", "Weekly", "Monthly", "Yearly", "Custom"],
-                    selected="Daily",
+                    selected="Daily"
                 ),
-                ui.output_ui("conditional_text"),
+                ui.panel_conditional(
+                    "input.habit_period === 'Custom'",
+                    ui.input_text(
+                        "habit_custom",
+                        "Custom period (e.g. enter 10 for 'every 10 days')",
+                        placeholder="Custom range…"
+                    ),
+                ),
                 ui.div(
                     ui.input_action_button("save_habit", "Save changes"),
                     ui.input_action_button("delete_habit", "Delete"),
@@ -49,40 +57,40 @@ def edit_habits_server(input, output, session):
     selected_habit_id = reactive.Value(None)
     _refresh_table = reactive.Value(0)
 
-    @output
-    @render.ui
-    def conditional_text():
-        """
-        the custom range field should only be visible when the choice is done by the user
-        """
-        if input.habit_period() == "Custom":
-            return ui.input_text(
-                "habit_custom",
-                "Custom period (e.g. for every 10 days, just type the number 10)",
-                placeholder="Custom range...."
-            )
-        return None
 
-
-    @reactive.Calc
-    def habits_df():
-        """
-        creates the habit df from the database when there are any
-        """
+    def habits_raw_df():
         user = state()["current_user"]
         _ = _refresh_table()
 
-        cols = ["habitID", "HabitName", "Periodtype", "IsActive", "LastChecked"]
+        cols = ["habitID","HabitName","Periodtype","IsActive","LastChecked"]
 
         if user is None:
             return pd.DataFrame(columns=cols)
-        
-        rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
 
+        rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
+        
         if not rows:
             return pd.DataFrame(columns=cols)
 
         return pd.DataFrame(rows)[cols]
+
+    @reactive.Calc
+    def habits_df():
+        raw = habits_raw_df().copy()
+
+        if raw.empty:
+            return pd.DataFrame(columns=["Habit Name","Period","Status","Last Checked"])
+
+        raw["IsActive"] = raw["IsActive"].map({1: "Active", 0: "Archived"})
+
+        raw.rename(columns={
+            "HabitName": "Habit Name",
+            "Periodtype": "Period",
+            "IsActive": "Status",
+            "LastChecked": "Last Checked",
+        }, inplace=True)
+
+        return raw[["Habit Name","Period","Status","Last Checked"]]
 
 
     @output
@@ -105,28 +113,31 @@ def edit_habits_server(input, output, session):
         """
 
         sel = input.habit_table_selected_rows()
-        df = habits_df()
+        df_disp = habits_df()
+        df_raw  = habits_raw_df()
 
-        if not sel or df.empty:
+        if not sel or df_disp.empty:
             selected_habit_id.set(None)
             ui.update_text("habit_name", value="")
             ui.update_select("habit_period", selected="Daily")
             ui.update_select("habit_status", selected="Active")
             ui.update_text("habit_custom", value="")
             return
-        
-        row = habits_df().iloc[sel[0]]
-        selected_habit_id.set(int(row["habitID"]))
-        status = "Active" if row["IsActive"] == 1 else "Archived"
 
-        ui.update_text("habit_name", value=row["HabitName"])
-        ui.update_select("habit_status", selected=status)
+        idx = sel[0]
+        hid = int(df_raw.iloc[idx]["habitID"])
+        selected_habit_id.set(hid)
 
-        label = row.get("Periodtype")
+        row = df_disp.iloc[idx]
+        ui.update_text("habit_name", value=row["Habit Name"])
+        ui.update_select("habit_status", selected=row["Status"])
+
+        label = row.get("Period")
 
         if label not in ("Daily", "Weekly", "Monthly", "Yearly"):
+            match = re.search(r"\b\d+\b", label)
             ui.update_select("habit_period", selected="Custom")
-            ui.update_text("habit_custom", value=label)
+            ui.update_text("habit_custom", value=match.group())
         else:
             ui.update_select("habit_period", selected=label)
 
@@ -151,7 +162,7 @@ def edit_habits_server(input, output, session):
         if period_sel == "Custom":
             custom = input.habit_custom()
             if not custom:
-                ui.notification_show("Enter a custom period through just a number (like 10)", type="error")
+                ui.notification_show("Enter a custom period in the text field in days (e.g. 10)", type="error")
                 return
             period_str = custom
         else:
@@ -228,7 +239,7 @@ def edit_habits_server(input, output, session):
 
     @reactive.Effect
     @reactive.event(input.cancel_delete_habit)
-    def close_modal():
+    def close_habit_delete_modal():
         """
         handles the 'cancel' button click inside the notification when the user clicks on 
         delete the current user
@@ -266,12 +277,13 @@ def edit_habits_server(input, output, session):
         if hasattr(user, "delete"):
             user.delete()
         ui.modal_remove()
-        update_state(current_page = "user_selection", refresh_user =+ 1)
+        update_state(current_page="user_selection",
+             refresh_user=state()["refresh_user"] + 1)
 
 
     @reactive.Effect
     @reactive.event(input.cancel_delete)
-    def close_modal():
+    def close_user_delete_modal():
         """
         handles the 'cancel' button click inside the notification when the user clicks on 
         delete the current user

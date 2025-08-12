@@ -1,4 +1,5 @@
-from services.database import get_active_habits, get_habit, add_habit, edit_habit, delete_habit, get_archived_habits
+from services.database import get_active_habits, get_habit, add_habit, edit_habit, delete_habit, get_archived_habits, mark_habit_as_checked, get_checks_for_habits
+from datetime import date, datetime, timedelta
 
 
 class Habit:
@@ -78,3 +79,66 @@ class Habit:
 
     def delete(self):
         delete_habit(self.habit_id)
+
+
+    def mark_checked(self):
+        mark_habit_as_checked(self.habit_id)
+      
+    @classmethod
+    def streaks_by_user(cls, user_id):
+
+        habits = get_active_habits(user_id)
+
+        if not habits:
+            return {}
+
+        habit_ids = [h["habitID"] for h in habits]
+        checks_map = get_checks_for_habits(habit_ids)
+        today = date.today()
+
+        out = {}
+
+        for h in habits:
+            hid = h["habitID"]
+
+            days = int(h["EqualsToDays"])
+            checks = checks_map.get(hid, [])
+            out[hid] = cls.current_streak(
+                check_dates=checks,
+                eq_days=days,        
+                today=today,
+                include_current_window_only_if_checked=True,
+            )
+        return out
+
+    @staticmethod
+    def _to_date(d):
+        if d is None:
+            return None
+        if isinstance(d, date) and not isinstance(d, datetime):
+            return d
+        return datetime.fromisoformat(str(d)).date()
+
+    @staticmethod
+    def current_streak(check_dates, eq_days, today, include_current_window_only_if_checked):
+
+        days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None}, reverse=True)
+        if not days:
+            return 0
+
+        streak = 0
+        window_end = today
+
+        while True:
+            window_start = window_end - timedelta(days=eq_days - 1)
+            has_check = any(window_start <= d <= window_end for d in days)
+
+            if not has_check:
+                if streak == 0 and not include_current_window_only_if_checked:
+                    return 1
+                break
+
+            streak += 1
+            window_end = window_start - timedelta(days=1)
+
+        return streak

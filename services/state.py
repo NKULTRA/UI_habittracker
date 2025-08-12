@@ -3,6 +3,7 @@ script handles the list of global reactive values
 """
 
 from shiny import reactive
+import pandas as pd
 
 state = reactive.Value({
     "current_page": "user_selection",

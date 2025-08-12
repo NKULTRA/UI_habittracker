@@ -15,7 +15,7 @@ def user_selection_ui():
         ui.div(
             {"class": "login-box"},
             ui.h3("Habit tracker"),
-            ui.img(src="images/lifestyle.svg", class_="login-img"),
+            ui.img(src="images/lifestyle.svg", class_="login-img"), # Logo
             ui.h3("Please click your name or create a new one"),
 
             ui.div(
@@ -25,8 +25,8 @@ def user_selection_ui():
 
             ui.div( 
                 {"class": "new-user-container"},
-                ui.input_text("input_create", label=None, placeholder="Create new user"),
-                ui.input_action_button("submit_new", "Create", disabled=True)
+                ui.input_text("input_create", label=None, placeholder="Create new user"), # create new user text field
+                ui.input_action_button("submit_new", "Create", disabled=True) # button next to new user text field
             )
         )
     )
@@ -108,5 +108,5 @@ def user_selection_server(input, output, session):
             )
         else:
             new_user = User.create(name)
-            update_state(refresh_user =+ 1)
+            update_state(refresh_user =+ 1) # update for dependency
             update_state(current_user=new_user, current_page="home_screen")

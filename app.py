@@ -19,13 +19,13 @@ app_ui = ui.page_fluid(
     ui.head_content(
         ui.tags.link(
             rel="stylesheet",
-            href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/lumen/bootstrap.min.css"
+            href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/lumen/bootstrap.min.css" # bootstrap style sheet
         ),
         ui.tags.link(
             rel="stylesheet",
-            href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" # google open sans font
         ),
-        ui.include_css("static/styles.css")
+        ui.include_css("static/styles.css") # css styles in /static
     ),
     
     ui.output_ui("main_ui")
@@ -42,6 +42,9 @@ def server(input, output, session):
     @output
     @render.ui
     def main_ui():
+        """
+        handles the rendering of the page the user currently is
+        """
         page = state()["current_page"]
 
         if page == "user_selection":
@@ -56,12 +59,17 @@ def server(input, output, session):
 
     @reactive.effect
     def run_server_logic():
+        """
+        Mount the server() of the page the user navigated to
+        """
         page = state()["current_page"]
         
+        # only react when the current page actually changes, just to reduce reactivity
         if _last_page.get() == page:
             return
         _last_page.set(page)
 
+        # mount server functions only once
         if page not in initialized_modules:
             if page == "user_selection":
                 user_selection_module.user_selection_server(input, output, session)
