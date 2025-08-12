@@ -17,13 +17,14 @@ import matplotlib.dates as mdates
 def habit_analytics_ui():
     return ui.page_fluid(
         ui.layout_columns(
-
+            # plot on the left side
             ui.card(
                 {"class": "analytics-plot"},
                 ui.h4("Streaks over time (active habits)"),
                 ui.output_plot("streaks_plot")
             ),
 
+            # buttons on the right side
             ui.card(
                 {"class": "analytics-downloads"},
                 ui.h4("Downloads"),
@@ -53,9 +54,7 @@ def habit_analytics_server(input, output, session):
     @reactive.Calc
     def _streak_history_df():
         """
-        One row per habit per CHECK day:
-        columns: ["date", "habitID", "HabitName", "streak"]
-        Streak is computed as of that day.
+        calculates the streak history for the plot for all active habits
         """
         rows = _active_habits_rows()
         if not rows:
@@ -75,6 +74,7 @@ def habit_analytics_server(input, output, session):
                 eq_days = 1
 
             days = sorted(set(checks_map.get(hid, [])))
+            # calculate the streak for every check that happened
             for d in days:
                 s = Habit.current_streak(
                     check_dates=checks_map.get(hid, []),
@@ -94,6 +94,9 @@ def habit_analytics_server(input, output, session):
     @output
     @render.plot
     def streaks_plot():
+        """
+        sets up the plot on the left side of the UI
+        """
         df = _streak_history_df()
         if df.empty:
             fig, ax = plt.subplots()
@@ -108,6 +111,7 @@ def habit_analytics_server(input, output, session):
 
         n_dates = df["date"].nunique()
 
+        # calculations to have some benchmarks for the axis sizes, depending on the number of checks / streak
         if n_dates <= 20:
             k = n_dates                  
         elif n_dates <= 60:
@@ -120,6 +124,7 @@ def habit_analytics_server(input, output, session):
         last_unique = np.sort(df["date"].unique())[-k:]
         df = df[df["date"].isin(last_unique)]
 
+        # plot
         fig, ax = plt.subplots()
 
         habits = df["HabitName"].unique()
@@ -133,7 +138,8 @@ def habit_analytics_server(input, output, session):
 
         max_streak = int(df["streak"].max())
         upper = max_streak + 3
-        ax.set_ylim(0, max(upper, 1))  
+        ax.set_ylim(0, max(upper, 1))
+        # control the axis ticks automatically and nicely, so that they are readable  
         ax.yaxis.set_major_locator(MaxNLocator(integer=True)) 
 
         ax.xaxis.set_major_locator(mdates.AutoDateLocator())
@@ -142,36 +148,27 @@ def habit_analytics_server(input, output, session):
 
         ax.legend(loc="best")
         ax.grid(True, axis="y", linestyle=":", linewidth=0.8)
+
         return fig
 
 
-    @render.download
+    @output()
+    @render.download(filename="active_habits.csv")
     def dl_active_habits():
-        """
-        CSV of active habits (one row per habit).
-        """
         rows = _active_habits_rows()
         df = pd.DataFrame(rows) if rows else pd.DataFrame(columns=[
             "habitID","userID","HabitName","periodtypeID","IsActive",
             "DateCreated","LastChecked","Periodtype","EqualsToDays"
         ])
 
-        def writer():
-            yield df.to_csv(index=False).encode("utf-8")
+        yield df.to_csv(index=False).encode("utf-8")
 
-        return render.Download("active_habits.csv", writer)
 
-    @render.download
+    @output()
+    @render.download(filename="streak_history.csv")
     def dl_streak_history():
-        """
-        CSV of streak history (one row per check day per habit).
-        """
         df = _streak_history_df()
-
-        def writer():
-            yield df.to_csv(index=False, date_format="%Y-%m-%d").encode("utf-8")
-
-        return render.Download("streak_history.csv", writer)
+        yield df.to_csv(index=False, date_format="%Y-%m-%d").encode("utf-8")
 
 
     @reactive.Effect
