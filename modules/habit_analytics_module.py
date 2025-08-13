@@ -30,26 +30,10 @@ def habit_analytics_ui():
                 ui.h4("Download CSVs"),
                 ui.output_ui("active_habits_button"),
                 ui.output_ui("periodicity_button"),
-                ui.layout_columns(
-                    ui.output_ui("archived_records_button"),
-                    ui.column(10, ui.download_button("dl_archived_records", "Archived + record streaks", style = "width:100%;")),
-                    ui.column(10),
-                ),
-                ui.layout_columns(
-                    ui.output_ui("completions_button"),
-                    ui.column(10, ui.download_button("dl_completions", "Completions per habit", style = "width:100%;")),
-                    ui.column(10),
-                ),
-                ui.layout_columns(
-                    ui.output_ui("longest_overall_button"),
-                    ui.column(10, ui.download_button("dl_longest_overall", "Longest run (overall)", style = "width:100%;")),
-                    ui.column(10),
-                ),
-                ui.layout_columns(
-                    ui.output_ui("longest_habit_button"),
-                    ui.column(10, ui.download_button("dl_longest_for_habit", "Longest run (selected habit)", style = "width:100%;")),
-                    ui.column(10,  ui.input_select("analyze_habit_record", label=None, choices=["test"])),
-                ),
+                ui.output_ui("archived_records_button"),
+                ui.output_ui("completions_button"),
+                ui.output_ui("longest_overall_button"),
+                ui.output_ui("longest_habit_button"),
                 ui.br(),
                 ui.input_action_button("analytics_home", "Back to the home screen")
             )
@@ -60,22 +44,12 @@ def habit_analytics_ui():
 def habit_analytics_server(input, output, session):
 
     @reactive.Calc
-    def _active_habits_rows():
-        """
-        loads the active habits from the current user and returns them as a list of dict
-        """
-        user = state()["current_user"]
-
-        if user is None:
-            return []
-        return [h.to_dict() for h in Habit.list_by_user(user.user_id)]
-
-    @reactive.Calc
     def _streak_history_df():
         """
         calculates the streak history for the plot for all active habits
         """
-        rows = _active_habits_rows()
+        user = state()["current_user"] 
+        rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
         if not rows:
             return pd.DataFrame(columns=["date", "habitID", "HabitName", "streak"])
 
@@ -198,11 +172,8 @@ def habit_analytics_server(input, output, session):
 
         df = pd.DataFrame(rows)
 
-        if df is None or df.empty:
-            df = pd.DataFrame(columns=[
-                "habitID","userID","HabitName","periodtypeID","IsActive",
-                "DateCreated","LastChecked","Periodtype","EqualsToDays"
-            ])
+        if df.empty:
+            df = pd.DataFrame(columns=["habitID","HabitName","IsActive","DateCreated","LastChecked","Periodtype","EqualsToDays"])
 
         yield _as_csv_bytes(df)
 
@@ -239,7 +210,7 @@ def habit_analytics_server(input, output, session):
     @output
     @render.download(filename="habits_by_periodicity.csv")
     def dl_periodicity():
-        req(available_periods())
+        req(input.analyze_habit_period())
 
         user = state()["current_user"]
         period = input.analyze_habit_period()
@@ -256,42 +227,220 @@ def habit_analytics_server(input, output, session):
 
         yield _as_csv_bytes(filtered_df)
 
+
+    @output
+    @render.ui
+    def archived_records_button():
+        user = state()["current_user"]
+        rows = [h.to_dict() for h in Habit.archived_list_by_user(user.user_id)]
+
+        if not rows:
+            return ui.layout_columns(
+                ui.column(10, ui.input_action_button("dl_archived_records", "Archived + record streaks", disabled = True, style = "width:100%;")),
+                ui.column(10),
+            )
+
+        return ui.layout_columns(
+                ui.column(10, ui.download_button("dl_archived_records", "Archived + record streaks", style = "width:100%;")),
+                ui.column(10),
+        )
+    
     @output
     @render.download(filename="archived_with_record_streaks.csv")
     def dl_archived_records():
-        rows = _archived_record_streaks_rows(user_id)
-        df = pd.DataFrame(rows) if not isinstance(rows, pd.DataFrame) else rows
-        yield _as_csv_bytes(df if df is not None else pd.DataFrame())
+        user = state()["current_user"]
+        arch = [h.to_dict() for h in Habit.archived_list_by_user(user.user_id)]
+
+        if not arch:
+            yield _as_csv_bytes(pd.DataFrame(columns=["habitID","HabitName","EqualsToDays","record_streak"]))
+            return
+
+        habit_ids = [a["habitID"] for a in arch]
+        checks_map = get_checks_for_habits(habit_ids)
+
+        rows = []
+        for a in arch:
+            hid = a["habitID"]
+            name = a.get("HabitName")
+            try:
+                equal_days = max(1, int(a.get("EqualsToDays") or 1))
+            except (TypeError, ValueError):
+                equal_days = 1
+
+            s = Habit.highest_streak(
+                check_dates=sorted(set(checks_map.get(hid, []))),
+                equal_days=equal_days
+            )
+
+            rows.append({
+                "habitID": hid,
+                "HabitName": name,
+                "EqualsToDays": equal_days,
+                "record_streak": int(s or 0),
+            })
+
+        df = pd.DataFrame(rows).sort_values(["HabitName","habitID"])
+        yield _as_csv_bytes(df)
+
+
+    @output
+    @render.ui
+    def completions_button():
+        user = state()["current_user"]
+        rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
+
+        if not rows:
+            return ui.layout_columns(
+                ui.column(10, ui.input_action_button("dl_completions", "Completions per habit", disabled = True, style = "width:100%;")),
+                ui.column(10),
+            )
+
+        return ui.layout_columns(
+                    ui.column(10, ui.download_button("dl_completions", "Completions per habit", style = "width:100%;")),
+                    ui.column(10),
+        )
 
     @output
     @render.download(filename="completions_per_habit.csv")
     def dl_completions():
-        rows = _completions_per_habit_rows(user_id)
-        df = pd.DataFrame(rows) if not isinstance(rows, pd.DataFrame) else rows
-        yield _as_csv_bytes(df if df is not None else pd.DataFrame())
+        user = state()["current_user"]
+
+        habits = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
+
+        if not habits:
+            yield _as_csv_bytes(pd.DataFrame(columns=["habitID", "HabitName", "check_count"]))
+            return
+
+        habit_ids = [a["habitID"] for a in habits]
+        checks_map = get_checks_for_habits(habit_ids)
+
+        rows = []
+        for a in habits:
+            hid = a["habitID"]
+            checks = checks_map.get(hid, []) or []
+            rows.append({
+                "habitID": hid,
+                "HabitName": a.get("HabitName"),
+                "check_count": len(checks),
+            })
+
+        df = pd.DataFrame(rows).sort_values(["HabitName", "habitID"])
+        yield _as_csv_bytes(df)
+
+
+    @output
+    @render.ui
+    def longest_overall_button():
+        user = state()["current_user"]
+        rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
+
+        if not rows:
+            return ui.layout_columns(
+                ui.column(10, ui.input_action_button("dl_longest_overall", "Longest run (overall)", disabled = True, style = "width:100%;")),
+                ui.column(10),
+            )
+        
+        return ui.layout_columns(
+                    ui.column(10, ui.download_button("dl_longest_overall", "Longest run (overall)", style = "width:100%;")),
+                    ui.column(10),
+        )
 
     @output
     @render.download(filename="longest_run_overall.csv")
     def dl_longest_overall():
-        rows = _longest_run_overall_rows(user_id)
-        df = pd.DataFrame(rows) if not isinstance(rows, pd.DataFrame) else rows
-        yield _as_csv_bytes(df if df is not None else pd.DataFrame())
+        user = state()["current_user"]
+        habits = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
 
+        if not habits:
+            yield _as_csv_bytes(pd.DataFrame(columns=["habitID","HabitName","EqualsToDays","record_streak"]))
+            return
+
+        habit_ids = [a["habitID"] for a in habits]
+        checks_map = get_checks_for_habits(habit_ids)
+
+        rows = []
+        for a in habits:
+            hid = a["habitID"]
+            name = a.get("HabitName")
+            try:
+                equal_days = max(1, int(a.get("EqualsToDays") or 1))
+            except (TypeError, ValueError):
+                equal_days = 1
+
+            s = Habit.highest_streak(
+                check_dates=sorted(set(checks_map.get(hid, []))),
+                equal_days=equal_days
+            )
+
+            rows.append({
+                "habitID": hid,
+                "HabitName": name,
+                "EqualsToDays": equal_days,
+                "record_streak": int(s or 0),
+            })
+
+        df = pd.DataFrame(rows)
+        top = df.sort_values(["record_streak", "HabitName", "habitID"],
+                            ascending=[False, True, True]).head(1)
+        yield _as_csv_bytes(top)
+
+    @output
+    @render.ui
+    def longest_habit_button():
+        user = state()["current_user"]
+        rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
+
+        if not rows:
+            return ui.layout_columns(
+                ui.column(10, ui.input_action_button("dl_longest_for_habit", "Longest run (selected habit)", disabled = True, style = "width:100%;")),
+                ui.column(10, ui.input_select("analyze_habit_record", label=None, choices=[])),
+            )
+        
+        habit_ids = [a["habitID"] for a in rows]
+        checks_map = get_checks_for_habits(habit_ids)
+        
+        if not checks_map:
+            return ui.layout_columns(
+                ui.column(10, ui.input_action_button("dl_longest_for_habit", "Longest run (selected habit)", disabled = True, style = "width:100%;")),
+                ui.column(10, ui.input_select("analyze_habit_record", label=None, choices=[])),
+            )
+
+        df = pd.DataFrame(rows)
+        habits = sorted(df["HabitName"].dropna().unique().tolist())
+
+        return ui.layout_columns(
+                    ui.column(10, ui.download_button("dl_longest_for_habit", "Longest run (selected habit)", style = "width:100%;")),
+                    ui.column(10, ui.input_select("analyze_habit_record", label=None, choices=habits)),
+        )
+    
     @output
     @render.download(filename="longest_run_selected_habit.csv")
     def dl_longest_for_habit():
-        raw = input.habit_id()
-        if raw in (None, "", "None"):
-            # No selection → export an empty frame with a hint
-            df = pd.DataFrame({"message": ["No habit selected"]})
-            yield _as_csv_bytes(df)
-            return
-        habit_id = int(raw)
-        rows = _longest_run_for_habit_rows(user_id, habit_id)
-        df = pd.DataFrame(rows) if not isinstance(rows, pd.DataFrame) else rows
-        yield _as_csv_bytes(df if df is not None else pd.DataFrame())
+        req(input.analyze_habit_record())
 
-########## hier darüber anpassen
+        sel_habit = input.analyze_habit_record()
+        user = state()["current_user"]
+
+        rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
+        meta = next((r for r in rows if r.get("HabitName") == sel_habit), None)
+        if not meta:
+            yield _as_csv_bytes(pd.DataFrame(columns=["habitID","HabitName","EqualsToDays","record_streak"]))
+            return
+
+        hid = meta["habitID"]
+        equal_days = int(meta.get("EqualsToDays") or 1)
+
+        checks = get_checks_for_habits([hid]).get(hid, [])
+        streak = int(Habit.highest_streak(check_dates=sorted(set(checks)), equal_days=equal_days) or 0)
+
+        df = pd.DataFrame([{
+            "habitID": hid,
+            "HabitName": sel_habit,
+            "EqualsToDays": equal_days,
+            "record_streak": streak,
+        }])
+        yield _as_csv_bytes(df)
+
 
     @reactive.Effect
     @reactive.event(input.analytics_home)

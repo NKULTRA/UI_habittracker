@@ -56,6 +56,11 @@ class Habit:
         return [Habit.from_row(r) for r in rows]
 
     @staticmethod
+    def archived_list_by_user(user_id):
+        rows = get_archived_habits(user_id)
+        return [Habit.from_row(r) for r in rows]
+
+    @staticmethod
     def get(habit_id):
         row = get_habit(habit_id)
         return Habit.from_row(row) if row else None

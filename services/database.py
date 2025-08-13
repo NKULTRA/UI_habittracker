@@ -24,7 +24,7 @@ def setup_database():
             CREATE TABLE IF NOT EXISTS user (
                 userID INTEGER PRIMARY KEY AUTOINCREMENT,
                 Username TEXT UNIQUE NOT NULL,
-                DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                DateCreated TIMESTAMP DEFAULT (datetime('now','localtime'))
             )
         """)
 
@@ -35,7 +35,7 @@ def setup_database():
                 userID INTEGER NOT NULL,
                 periodtypeID INTEGER NOT NULL,
                 HabitName TEXT NOT NULL,
-                DateCreated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                DateCreated TIMESTAMP DEFAULT (datetime('now','localtime')),
                 LastChecked TIMESTAMP,
                 IsActive BOOLEAN DEFAULT 1,
                 FOREIGN KEY (userID) REFERENCES user(userID),
@@ -60,8 +60,7 @@ def setup_database():
                 habitID INTEGER NOT NULL,
                 activity_type TEXT NOT NULL CHECK (activity_type IN (
                         'check','create','edit','archive','unarchive','rename','period_change')),
-                ActivityDate TIMESTAMP,
-                DateCreated TIMESTAMP,
+                ActivityDate TIMESTAMP DEFAULT (datetime('now','localtime')),
                 FOREIGN KEY (habitID) REFERENCES habits(habitID)
             )
         """)

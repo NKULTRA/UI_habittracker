@@ -6,8 +6,8 @@ A habit tracker in python shiny for the project of the course DLBDSOOFPP01 - Obj
 - Git (optional, for cloning)
 
 ### Option A — Clone with Git
-git clone https://github.com/NKULTRA/UI_habittracker.git
-cd UI_habittracker
+- git clone https://github.com/NKULTRA/UI_habittracker.git
+- cd UI_habittracker
 
 ### Option B — Download ZIP
 1. On GitHub, click Code → Download ZIP
@@ -21,8 +21,8 @@ py -m venv .venv
 py -m pip install -r requirements.txt
 
 ## Run the app
-### In Terminal or cmd
+### Option A — In Terminal or cmd
 python -m shiny run --reload app.py
 
-### In VS Code
+### Option B — In VS Code
 upper right corner next to the 'Play'- Button -> Run Shiny App
