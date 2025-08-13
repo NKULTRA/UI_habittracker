@@ -445,28 +445,6 @@ def get_active_habits(user_id):
         return [dict(r) for r in cursor.fetchall()]
 
 
-def get_habits_with_same_period(user_id, period):
-    """
-    Get all active habits with the same period from the
-    current user
-
-    Parameters:
-    - user_id: integer, ID of the current user
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT a.habitID, a.HabitName
-            FROM habits a
-            JOIN periodtypes b ON a.periodtypeID = b.periodtypeID
-            WHERE a.userID = ? AND a.IsActive = 1 AND b.Periodtype = ?
-        """, (user_id, period))
-
-        return [dict(r) for r in cursor.fetchall()]
-
-
 def get_archived_habits(user_id):
     """
     Get all archived habits of the current user

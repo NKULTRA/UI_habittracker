@@ -85,7 +85,7 @@ class Habit:
         mark_habit_as_checked(self.habit_id)
       
     @classmethod
-    def streaks_by_user(cls, user_id):
+    def ongoing_streaks_by_user(cls, user_id):
 
         habits = get_active_habits(user_id)
 
@@ -105,7 +105,7 @@ class Habit:
             checks = checks_map.get(hid, [])
             out[hid] = cls.current_streak(
                 check_dates=checks,
-                eq_days=days,        
+                equal_days=days,        
                 today=today,
                 include_current_window_only_if_checked=True,
             )
@@ -120,7 +120,7 @@ class Habit:
         return datetime.fromisoformat(str(d)).date()
 
     @staticmethod
-    def current_streak(check_dates, eq_days, today, include_current_window_only_if_checked):
+    def current_streak(check_dates, equal_days, today, include_current_window_only_if_checked):
 
         days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None}, reverse=True)
         if not days:
@@ -130,7 +130,7 @@ class Habit:
         window_end = today
 
         while True:
-            window_start = window_end - timedelta(days = eq_days - 1)
+            window_start = window_end - timedelta(days = equal_days - 1)
             has_check = any(window_start <= d <= window_end for d in days)
 
             if not has_check:
@@ -142,3 +142,35 @@ class Habit:
             window_end = window_start - timedelta(days=1)
 
         return streak
+    
+    @staticmethod
+    def highest_streak(check_dates, equal_days):
+        """
+
+        """
+
+        days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None})
+
+        if not days:
+            return 0
+
+        min_day = days[0]
+        window_end = days[-1]  
+
+        best = 0
+        cur = 0
+
+        while window_end >= min_day:
+            window_start = window_end - timedelta(days=equal_days - 1)
+
+            has_check = any(window_start <= d <= window_end for d in days)
+            if has_check:
+                cur += 1
+                if cur > best:
+                    best = cur
+            else:
+                cur = 0
+
+            window_end = window_start - timedelta(days=1)
+
+        return best

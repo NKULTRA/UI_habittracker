@@ -60,7 +60,7 @@ def home_screen_server(input, output, session):
         today = date.today()
 
         # get the streaks for all habits for the current user
-        streak_map = Habit.streaks_by_user(user.user_id)
+        streak_map = Habit.ongoing_streaks_by_user(user.user_id)
 
         due, optional = [], []
 
