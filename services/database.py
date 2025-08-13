@@ -215,27 +215,6 @@ def user_exists(username):
         return cursor.fetchone() is not None
     
 
-def user_information(user_id):
-    """
-    Get the username by the id 
-
-    Parameters:
-    - user_id: integer, the ID of the chosen user
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT userID, Username, DateCreated
-            FROM user
-            WHERE userID = ?
-        """, (user_id,))
-
-        row = cursor.fetchone()
-
-        return dict(row) if row else None
-
-
 def get_users():
     """
     Get all users that already exist
