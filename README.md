@@ -6,7 +6,6 @@ A habit tracker in python shiny for the project of the course DLBDSOOFPP01 - Obj
 - Git (optional, for cloning)
 
 ### Option A — Clone with Git
-```bash
 git clone https://github.com/NKULTRA/UI_habittracker.git
 cd UI_habittracker
 
