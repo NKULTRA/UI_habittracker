@@ -16,13 +16,13 @@ A habit tracker in python shiny for the project of the course DLBDSOOFPP01 - Obj
 
 ## Create a virtual environment & install requirements.txt
 ### on Windows
-py -m venv .venv
-.\.venv\Scripts\activate
-py -m pip install -r requirements.txt
+- py -m venv .venv
+- .\.venv\Scripts\activate
+- py -m pip install -r requirements.txt
 
 ## Run the app
 ### Option A — In Terminal or cmd
-python -m shiny run --reload app.py
+- python -m shiny run --reload app.py
 
 ### Option B — In VS Code
 upper right corner next to the 'Play'- Button -> Run Shiny App
