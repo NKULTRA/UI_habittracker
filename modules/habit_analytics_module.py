@@ -62,16 +62,22 @@ def habit_analytics_server(input, output, session):
             name = r["HabitName"]
 
             try:
-                equal_days = max(1, int(r.get("EqualsToDays") or 1))
+                equal_days = int(r.get("EqualsToDays") or 1)
             except (TypeError, ValueError):
                 equal_days = 1
 
-            days = sorted(set(checks_map.get(hid, [])))
+            checks = checks_map.get(hid, [])
+                
+            if not checks:
+                continue
+
+            days = sorted({Habit._to_date(d) for d in checks if Habit._to_date(d) is not None})
+
             # calculate the streak for every check that happened
             # broken flags are not collected here
             for d in days:
-                s, _ = Habit.current_streak(
-                    check_dates=checks_map.get(hid, []),
+                s, _broken = Habit.current_streak(
+                    check_dates=days,
                     equal_days=equal_days,
                     today=d,
                 )
