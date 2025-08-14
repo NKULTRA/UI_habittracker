@@ -25,4 +25,5 @@ A habit tracker in python shiny for the project of the course DLBDSOOFPP01 - Obj
 - python -m shiny run --reload app.py
 
 ### Option B — In VS Code
-upper right corner next to the 'Play'- Button -> Run Shiny App
+- open app.R
+- upper right corner next to the 'Play'- Button -> Run Shiny App
