@@ -105,7 +105,7 @@ class Habit:
         broken_flag = {}
 
         for h in habits:
-            hid = str(h["habitID"])
+            hid = h["habitID"]
 
             days = int(h["EqualsToDays"])
             checks = checks_map.get(hid, [])
@@ -134,24 +134,26 @@ class Habit:
         if not days:
             return 0, False
 
+        current_start = today - timedelta(days=equal_days - 1)
+        current_has_check = any(current_start <= d <= today for d in days)
+        broken_now = not current_has_check
+
         streak = 0
         window_end = today
-        broken = False
 
         while True:
-            window_start = window_end - timedelta(days = equal_days - 1)
+            window_start = window_end - timedelta(days=equal_days - 1)
             has_check = any(window_start <= d <= window_end for d in days)
 
             if not has_check:
-                if streak == 0:
-                    return 1, False
-                broken = True
+                if streak == 0 and not current_has_check:
+                    return 1, broken_now
                 break
-                
+
             streak += 1
             window_end = window_start - timedelta(days=1)
 
-        return streak, broken
+        return streak, broken_now
     
     @staticmethod
     def highest_streak(check_dates, equal_days):

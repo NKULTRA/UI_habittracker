@@ -73,7 +73,7 @@ def habit_analytics_server(input, output, session):
                 s, _ = Habit.current_streak(
                     check_dates=checks_map.get(hid, []),
                     equal_days=equal_days,
-                    today=datetime.fromisoformat(str(d)).date(),
+                    today=d,
                 )
                 out.append({"date": pd.to_datetime(d), "habitID": hid, "HabitName": name, "streak": int(s)})
 
