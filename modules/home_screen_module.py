@@ -47,59 +47,54 @@ def home_screen_server(input, output, session):
         """
         user = state()["current_user"]
         _ = refresh_habits()
-
         if user is None:
             return [], [], []
 
-        # get all active habits for the current user
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
-
         if not rows:
             return [], [], []
 
         today = date.today()
 
-        # get the streaks for all habits for the current user
+        # current streaks + "broken now" flag (no check in current window)
         streak_map, broken_flag = Habit.ongoing_streaks_by_user(user.user_id)
 
         due, optional, broken = [], [], []
 
-        # create a template to use for each habit
         for r in rows:
             hid  = r["habitID"]
             name = r["HabitName"]
             streak = int(streak_map.get(hid, 0))
-
-            # fallback for error handling
-            try:
-                eq_days = max(1, int(r.get("EqualsToDays") or 1))
-            except (TypeError, ValueError):
-                eq_days = 1
-
+            equal_days = int(r.get("EqualsToDays") or 1)
             last_checked = r.get("LastChecked")
 
-            # fallback for error handling
             try:
-                last_dt = last_checked if isinstance(last_checked, datetime) else (datetime.fromisoformat(str(last_checked)) if last_checked else None)
+                last_dt = last_checked if isinstance(last_checked, datetime) else (
+                    datetime.fromisoformat(str(last_checked)) if last_checked else None
+                )
             except Exception:
                 last_dt = None
 
-            # basis for the output 
-            # Habitname, habitID and the streak
             label_tuple = (name, hid, streak)
 
-            if broken_flag.get(hid, False):
-                broken.append(label_tuple)
-                continue
+            days_since = (today - last_dt.date()).days
 
-            # daily habits which are checked today shouldnt show up under optional again
-            window_start = today - timedelta(days = eq_days - 1)
-
-            if last_dt is None or last_dt.date() < window_start:
-                due.append(label_tuple)
+            if equal_days == 1:
+                if days_since <= 0:
+                    continue
+                elif days_since == 1:
+                    due.append(label_tuple)
+                else: 
+                    broken.append(label_tuple)
             else:
-                if eq_days > 1 and last_dt.date() < today:
+                if days_since <= 0:
+                    continue
+                elif 1 <= days_since <= equal_days - 2:
                     optional.append(label_tuple)
+                elif days_since in (equal_days - 1, equal_days):
+                    due.append(label_tuple)
+                else: 
+                    broken.append(label_tuple)
 
         return due, optional, broken
 
