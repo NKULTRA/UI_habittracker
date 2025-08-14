@@ -6,10 +6,10 @@ from shiny import render, ui, reactive, req
 from services.state import state, update_state
 from models.habit import Habit
 from services.database import get_checks_for_habits
-from datetime import datetime
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 from matplotlib.ticker import MaxNLocator
 import matplotlib.dates as mdates
 
@@ -28,6 +28,10 @@ def habit_analytics_ui():
             ui.card(
                 {"class": "analytics-downloads"},
                 ui.h4("Download CSVs"),
+                ui.div(
+                    {"class": "alert alert-custom d-flex align-items-center mb-2", "role": "alert"},
+                    "Download buttons are active only when there’s something to download."
+                ),
                 ui.output_ui("active_habits_button"),
                 ui.output_ui("periodicity_button"),
                 ui.output_ui("archived_records_button"),
@@ -104,7 +108,7 @@ def habit_analytics_server(input, output, session):
 
         df = df.copy()
 
-        df["date"] = pd.to_datetime(df["date"])
+        df["date"] = pd.to_datetime(df["date"]).dt.normalize() 
         df = df.sort_values(["HabitName", "date"])
 
         n_dates = df["date"].nunique()
@@ -122,27 +126,27 @@ def habit_analytics_server(input, output, session):
         last_unique = np.sort(df["date"].unique())[-k:]
         df = df[df["date"].isin(last_unique)]
 
-        # plot
+        # Plot
         fig, ax = plt.subplots()
 
         habits = df["HabitName"].unique()
-        jitter_amount = 0.15 
-
+        jitter_amount = 0.15
         for _, name in enumerate(habits):
             g = df[df["HabitName"] == name]
             jitter = np.random.uniform(-jitter_amount, jitter_amount, size=len(g))
             ax.plot(g["date"], g["streak"] + jitter, marker="o", label=name, linestyle='-')
 
-
         max_streak = int(df["streak"].max())
         upper = max_streak + 3
         ax.set_ylim(0, max(upper, 1))
-        # control the axis ticks automatically and nicely, so that they are readable  
-        ax.yaxis.set_major_locator(MaxNLocator(integer=True)) 
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
-        ax.xaxis.set_major_locator(mdates.AutoDateLocator())
-        ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(ax.xaxis.get_major_locator()))
-        fig.autofmt_xdate()
+        n_days = df["date"].nunique()
+        interval = max(1, n_days // 8)
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
+        ax.xaxis.set_minor_locator(ticker.NullLocator()) 
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b-%d"))
+        fig.autofmt_xdate(rotation=0)
 
         ax.legend(loc="best")
         ax.grid(True, axis="y", linestyle=":", linewidth=0.8)
@@ -415,8 +419,8 @@ def habit_analytics_server(input, output, session):
         habits = sorted(df["HabitName"].dropna().unique().tolist())
 
         return ui.layout_columns(
-                    ui.column(10, ui.download_button("dl_longest_for_habit", "Longest run (selected habit)", style = "width:100%;")),
-                    ui.column(10, ui.input_select("analyze_habit_record", label=None, choices=habits)),
+            ui.column(10, ui.download_button("dl_longest_for_habit", "Longest run (selected habit)", style = "width:100%;")),
+            ui.column(10, ui.input_select("analyze_habit_record", label=None, choices=habits)),
         )
     
     @output

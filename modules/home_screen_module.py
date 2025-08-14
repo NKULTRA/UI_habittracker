@@ -18,7 +18,6 @@ def home_screen_ui():
                 ui.card(
                     {"class": "home-table"},
                     ui.h4("Your Habits"),
-                    ui.output_ui("home_checks"),
                     ui.output_ui("habits_display")
                 ),
                 
@@ -108,13 +107,20 @@ def home_screen_server(input, output, session):
         due, optional, broken = _habits_for_home()
 
         if not due and not optional and not broken:
-            return ui.p("Currently no habits to check. Check your list of habits under the 'EDIT HABITS' - screen.")
-        
+            return  ui.div(
+                {"class": "alert alert-custom", "role": "alert"},
+                "Currently no habits to check. You can review your list under the “Edit Habits” screen."
+            )
+            
         due_choices = {str(hid): f"{name} (current streak: {streak})" for (name, hid, streak) in due}
         opt_choices = {str(hid): f"{name} (current streak: {streak})" for (name, hid, streak) in optional}
         broken_choices = {str(hid): f"{name} (current streak: {streak})" for (name, hid, streak) in broken}
 
         return ui.div(
+            ui.div(
+                {"class": "alert alert-custom", "role": "alert"},
+                "Tip: Check the box to mark a habit complete, then click the button below to confirm."
+            ),
             ui.card(
                 ui.h4(f"Do these today to keep your streak ({len(due)})"),
                 ui.input_checkbox_group("home_due", None, choices=due_choices, selected=None, inline=False),

@@ -146,3 +146,12 @@ button:hover, .btn:hover, input[type="button"]:hover {
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
+
+.alert-custom {
+    background-color: #e8f9e8;
+    color: #2e5e2e;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    border-radius: 8px;
+}

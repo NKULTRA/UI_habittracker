@@ -34,7 +34,7 @@ def edit_habits_ui():
                         "habit_custom",
                         "Custom period (e.g. enter 10 for 'every 10 days')",
                         placeholder="Custom range…"
-                    ),
+                    )
                 ),
                 ui.input_select(
                     "habit_status",
@@ -43,10 +43,21 @@ def edit_habits_ui():
                     selected="Active"
                 ),
                 ui.div(
+                    {"class": "d-flex flex-wrap gap-2"},
                     ui.input_action_button("save_habit", "Save changes"),
                     ui.input_action_button("delete_habit", "Delete"),
                     ui.input_action_button("delete_user", "Delete User"),
-                    ui.input_action_button("home_sc", "Back"),
+                    ui.input_action_button("home_sc", "Back")
+                ),
+                ui.div(
+                    {"class": "alert alert-custom d-flex align-items-center mb-2", "role": "alert"},
+                    ui.HTML(
+                        "To add a new habit, give it a name, choose a period, and click 'Save Changes'.<br>"
+                        "To edit a habit, click the associated row in the table on the left. After changes click 'Save Changes'.<br>"
+                        "To archive a habit, set its status to 'Archived' (reactivate the same way).<br>"
+                        "To delete a habit, select it, then click 'Delete'.<br>"
+                        "'Delete User' will permanently remove the current user — use with caution!"
+                    )
                 )
             ),
         )

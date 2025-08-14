@@ -25,10 +25,11 @@ app_ui = ui.page_fluid(
             rel="stylesheet",
             href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" # google open sans font
         ),
+        ui.tags.link(rel="icon", type="image/png", href="images/fav_lifestyle.png"),
         ui.include_css("static/styles.css") # css styles in /static
     ),
-    
-    ui.output_ui("main_ui")
+    ui.output_ui("main_ui"),
+    title="Habit Tracker"
 )
 
 
