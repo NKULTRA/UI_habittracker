@@ -49,20 +49,20 @@ def home_screen_server(input, output, session):
         _ = refresh_habits()
 
         if user is None:
-            return [], []
+            return [], [], []
 
         # get all active habits for the current user
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
 
         if not rows:
-            return [], []
+            return [], [], []
 
         today = date.today()
 
         # get the streaks for all habits for the current user
-        streak_map = Habit.ongoing_streaks_by_user(user.user_id)
+        streak_map, broken_flag = Habit.ongoing_streaks_by_user(user.user_id)
 
-        due, optional = [], []
+        due, optional, broken = [], [], []
 
         # create a template to use for each habit
         for r in rows:
@@ -86,7 +86,11 @@ def home_screen_server(input, output, session):
 
             # basis for the output 
             # Habitname, habitID and the streak
-            label_tuple = (name, hid, streak) 
+            label_tuple = (name, hid, streak)
+
+            if broken_flag.get(hid, False):
+                broken.append(label_tuple)
+                continue
 
             # daily habits which are checked today shouldnt show up under optional again
             window_start = today - timedelta(days = eq_days - 1)
@@ -97,7 +101,7 @@ def home_screen_server(input, output, session):
                 if eq_days > 1 and last_dt.date() < today:
                     optional.append(label_tuple)
 
-        return due, optional
+        return due, optional, broken
 
     @output
     @render.ui
@@ -106,13 +110,14 @@ def home_screen_server(input, output, session):
         returns the div for the output including due habits & optional habits
         builds up on the tuple generated in _habits_for_home()
         """
-        due, optional = _habits_for_home()
+        due, optional, broken = _habits_for_home()
 
-        if not due and not optional:
+        if not due and not optional and not broken:
             return ui.p("Currently no habits to check. Check your list of habits under the 'EDIT HABITS' - screen.")
         
         due_choices = {str(hid): f"{name} (current streak: {streak})" for (name, hid, streak) in due}
         opt_choices = {str(hid): f"{name} (current streak: {streak})" for (name, hid, streak) in optional}
+        broken_choices = {str(hid): f"{name} (current streak: {streak})" for (name, hid, streak) in broken}
 
         return ui.div(
             ui.card(
@@ -122,6 +127,10 @@ def home_screen_server(input, output, session):
             ui.card(
                 ui.h4(f"Optional today ({len(optional)})"),
                 ui.input_checkbox_group("home_opt", None, choices=opt_choices, selected=None, inline=False),
+            ),
+            ui.card(
+                ui.h4(f"Broken habits ({len(broken)})"),
+                ui.input_checkbox_group("home_broken", None, choices=broken_choices, selected=None, inline=False),
             ),
             ui.input_action_button("home_mark_done", "Mark selected as done"),
         )

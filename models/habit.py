@@ -102,19 +102,22 @@ class Habit:
         today = date.today()
 
         out = {}
+        broken_flag = {}
 
         for h in habits:
             hid = str(h["habitID"])
 
             days = int(h["EqualsToDays"])
             checks = checks_map.get(hid, [])
-            out[hid] = cls.current_streak(
+            streak, broken = cls.current_streak(
                 check_dates=checks,
                 equal_days=days,        
-                today=today,
-                include_current_window_only_if_checked=True,
+                today=today
             )
-        return out
+            out[hid] = streak
+            broken_flag[hid] = broken
+
+        return out, broken_flag
 
     @staticmethod
     def _to_date(d):
@@ -125,28 +128,30 @@ class Habit:
         return datetime.fromisoformat(str(d)).date()
 
     @staticmethod
-    def current_streak(check_dates, equal_days, today, include_current_window_only_if_checked):
+    def current_streak(check_dates, equal_days, today):
 
         days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None}, reverse=True)
         if not days:
-            return 0
+            return 0, False
 
         streak = 0
         window_end = today
+        broken = False
 
         while True:
             window_start = window_end - timedelta(days = equal_days - 1)
             has_check = any(window_start <= d <= window_end for d in days)
 
             if not has_check:
-                if streak == 0 and not include_current_window_only_if_checked:
-                    return 1
+                if streak == 0:
+                    return 1, False
+                broken = True
                 break
-
+                
             streak += 1
             window_end = window_start - timedelta(days=1)
 
-        return streak
+        return streak, broken
     
     @staticmethod
     def highest_streak(check_dates, equal_days):

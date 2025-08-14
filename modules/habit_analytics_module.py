@@ -68,12 +68,12 @@ def habit_analytics_server(input, output, session):
 
             days = sorted(set(checks_map.get(hid, [])))
             # calculate the streak for every check that happened
+            # broken flags are not collected here
             for d in days:
-                s = Habit.current_streak(
+                s, _ = Habit.current_streak(
                     check_dates=checks_map.get(hid, []),
                     equal_days=equal_days,
                     today=datetime.fromisoformat(str(d)).date(),
-                    include_current_window_only_if_checked=True,
                 )
                 out.append({"date": pd.to_datetime(d), "habitID": hid, "HabitName": name, "streak": int(s)})
 
