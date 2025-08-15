@@ -8,6 +8,7 @@ from models.habit import Habit
 from services.database import get_checks_for_habits
 import pandas as pd
 import numpy as np
+from datetime import date, timedelta
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 from matplotlib.ticker import MaxNLocator
@@ -20,7 +21,7 @@ def habit_analytics_ui():
             # plot on the left side
             ui.card(
                 {"class": "analytics-plot"},
-                ui.h4("Streaks over time (active habits with at least one check)"),
+                ui.h4("Streaks over time (active habits)"),
                 ui.output_plot("streaks_plot")
             ),
 
@@ -54,8 +55,12 @@ def habit_analytics_server(input, output, session):
         """
         user = state()["current_user"] 
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
+
         if not rows:
             return pd.DataFrame(columns=["date", "habitID", "HabitName", "streak"])
+
+        today = date.today()
+        MAX_DAYS = 180 # the maximum days to go back for the plot
 
         habit_ids = [r["habitID"] for r in rows]
         checks_map = get_checks_for_habits(habit_ids) 
@@ -71,24 +76,43 @@ def habit_analytics_server(input, output, session):
             except (TypeError, ValueError):
                 equal_days = 1
 
+            created = Habit._to_date(r.get("DateCreated"))
             checks = checks_map.get(hid, [])
                 
-            if not checks:
-                continue
-
             days = sorted({Habit._to_date(d) for d in checks if Habit._to_date(d) is not None})
 
-            # calculate the streak for every habit for every day from this user
-            # this needs to be done that we can plot the correct streak point on each date
-            # broken flags are not collected here
-            for d in days:
+            # never was checked, doesnt need to cluster the legend
+            if not days:
+                continue
+            # first check date
+            elif days:
+                start_date = days[0]
+            # or creation date
+            elif created:
+                start_date = created
+            else:
+                start_date = today
+            
+            # exclude checks too far in the past
+            min_start = today - timedelta(days=MAX_DAYS - 1)
+
+            if start_date < min_start:
+                start_date = min_start
+
+            date_range = pd.date_range(start=start_date, end=today, freq="D")
+
+            for d in date_range:
                 s = Habit.current_streak(
                     check_dates=days,
                     equal_days=equal_days,
-                    today=d,
-                    date_created=r.get("DateCreated")
+                    today=d.date()
                 )
-                out.append({"date": pd.to_datetime(d), "habitID": hid, "HabitName": name, "streak": int(s)})
+                out.append({
+                    "date": pd.to_datetime(d.date()),
+                    "habitID": hid,
+                    "HabitName": name,
+                    "streak": int(s)
+                })
 
         if not out:
             return pd.DataFrame(columns=["date", "habitID", "HabitName", "streak"])

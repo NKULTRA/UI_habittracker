@@ -181,8 +181,7 @@ class Habit:
             streak = cls.current_streak(
                 check_dates=checks,
                 equal_days=days,        
-                today=today,
-                date_created=h.get("DateCreated")
+                today=today
             )
             out[hid] = streak
 
@@ -203,7 +202,7 @@ class Habit:
         return datetime.fromisoformat(str(d)).date()
 
     @staticmethod
-    def current_streak(check_dates, equal_days, today, date_created):
+    def current_streak(check_dates, equal_days, today):
         """
         calculate the current streak for a habit
 
@@ -213,40 +212,50 @@ class Habit:
         - today: date, the date of today
         - date_created: date, the date of the creation of the habit
         """
-        days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None}, reverse=True)
+        days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None})
         
-        # here needs to be seperated between habits which were created but never marked as checked
-        # but their first period hasn't been completed
         if not days:
-            if date_created is not None:
-                created = Habit._to_date(date_created)
-                age = (today - created).days
-                if age < equal_days:
-                    return 0
-                else:
-                    return 0
             return 0
 
-        current_start = today - timedelta(days=equal_days - 1)
-        current_has_check = any(current_start <= d <= today for d in days)
+        last_check = days[-1]
+        days_since = (today - last_check).days
 
-        streak = 0
-        window_end = today
+        # broken if at least one FULL window has elapsed after the last check
+        if days_since > equal_days:
+            return 0
 
-        # goes back in the period as long as there are checks
-        while True:
+        # decide which window to start counting from
+        # window is [window_end - (eq-1), window_end]
+        def window_has_check(window_end):
             window_start = window_end - timedelta(days=equal_days - 1)
-            has_check = any(window_start <= d <= window_end for d in days)
+            # fast exit when before first check
+            if window_end < days[0]:
+                return False
+            # membership test
+            for d in reversed(days):  # iterate from latest; cheap enough given small counts
+                if d < window_start:
+                    break
+                if d <= window_end:
+                    if d >= window_start:
+                        return True
+            return False
 
-            if not has_check:
-                if streak == 0 and not current_has_check:
-                    return 1
+        # if current window has a check, start here; else (not broken) start at previous window
+        window_end = today
+        if not window_has_check(window_end):
+            # current window empty; only allowed if we aren't broken
+            # (we already returned 0 if broken)
+            window_end = today - timedelta(days=equal_days)
+
+        # count consecutive windows with a check
+        streak = 0
+        while True:
+            if not window_has_check(window_end):
                 break
-
             streak += 1
-            window_end = window_start - timedelta(days=1)
+            window_end = window_end - timedelta(days=equal_days)
 
-        return streak
+        return int(streak)
     
     @staticmethod
     def highest_streak(check_dates, equal_days):

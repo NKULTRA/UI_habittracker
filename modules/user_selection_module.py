@@ -15,6 +15,7 @@ def user_selection_ui():
         ui.div(
             {"class": "login-box"},
             ui.h3("Habit tracker"),
+            # image source: https://www.flaticon.com/ with premium account
             ui.img(src="images/lifestyle.svg", class_="login-img"), # Logo
             ui.h3("Please click your name or create a new one"),
 
