@@ -142,22 +142,21 @@ class Habit:
         today = date.today()
 
         out = {}
-        broken_flag = {}
 
         for h in habits:
             hid = h["habitID"]
 
             days = int(h["EqualsToDays"])
             checks = checks_map.get(hid, [])
-            streak, broken = cls.current_streak(
+            streak = cls.current_streak(
                 check_dates=checks,
                 equal_days=days,        
-                today=today
+                today=today,
+                date_created=h.get("DateCreated")
             )
             out[hid] = streak
-            broken_flag[hid] = broken
 
-        return out, broken_flag
+        return out
 
     @staticmethod
     def _to_date(d):
@@ -171,17 +170,26 @@ class Habit:
         return datetime.fromisoformat(str(d)).date()
 
     @staticmethod
-    def current_streak(check_dates, equal_days, today):
+    def current_streak(check_dates, equal_days, today, date_created):
         """
         calculate the current streak for a habit
         """
         days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None}, reverse=True)
+        
+        # here needs to be seperated between habits which were created but never marked as checked
+        # but their first period hasn't been completed
         if not days:
-            return 0, False
+            if date_created is not None:
+                created = Habit._to_date(date_created)
+                age = (today - created).days
+                if age < equal_days:
+                    return 0
+                else:
+                    return 0
+            return 0
 
         current_start = today - timedelta(days=equal_days - 1)
         current_has_check = any(current_start <= d <= today for d in days)
-        broken_now = not current_has_check # no check in the last period
 
         streak = 0
         window_end = today
@@ -193,13 +201,13 @@ class Habit:
 
             if not has_check:
                 if streak == 0 and not current_has_check:
-                    return 1, broken_now
+                    return 1
                 break
 
             streak += 1
             window_end = window_start - timedelta(days=1)
 
-        return streak, broken_now
+        return streak
     
     @staticmethod
     def highest_streak(check_dates, equal_days):

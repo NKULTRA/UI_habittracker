@@ -61,7 +61,7 @@ def home_screen_server(input, output, session):
         today = date.today()
 
         # current streaks + "broken now" flag (no check in current window)
-        streak_map, broken_flag = Habit.ongoing_streaks_by_user(user.user_id)
+        streak_map = Habit.ongoing_streaks_by_user(user.user_id)
 
         due, optional, broken = [], [], []
 
@@ -71,6 +71,7 @@ def home_screen_server(input, output, session):
             streak = int(streak_map.get(hid, 0))
             equal_days = int(r.get("EqualsToDays") or 1)
             last_checked = r.get("LastChecked")
+            date_created = r.get("DateCreated")
 
             try:
                 last_dt = last_checked if isinstance(last_checked, datetime) else (
@@ -79,34 +80,52 @@ def home_screen_server(input, output, session):
             except Exception:
                 last_dt = None
 
-            label_tuple = (name, hid, streak)
+            try:
+                created_dt = last_checked if isinstance(date_created, datetime) else (
+                    datetime.fromisoformat(str(date_created)) if date_created else None
+                )
+            except Exception:
+                created_dt = None
 
-            days_since = (today - last_dt.date()).days
+            has_check = last_dt is not None
+            base_dt = last_dt or created_dt or datetime.combine(today, datetime.min.time())
+            days_since = (today - base_dt.date()).days
 
-            # daily habits are due today or broken after one day without check
+            label = (name, hid, streak)
+
             if equal_days == 1:
-                # checked today
-                if days_since <= 0:
-                    continue
-                # checked yesterday
-                elif days_since == 1:
-                    due.append(label_tuple)
-                else: 
-                    broken.append(label_tuple)
-            # all other habits except dailies
+                # daily habits
+                if has_check:
+                    if days_since <= 0:
+                        # already checked today
+                        continue
+                    elif days_since == 1:
+                        due.append(label)
+                    else:
+                        broken.append(label)
+                else:
+                    # never checked: daily is due immediately
+                    due.append(label)
             else:
-                # checked today
-                if days_since <= 0:
-                    continue
-                # checked somewhere within their gap, but remain optional until the last day before be broken
-                elif 1 <= days_since <= equal_days - 2:
-                    optional.append(label_tuple)
-                # become due after the optional phase
-                elif days_since in (equal_days - 1, equal_days):
-                    due.append(label_tuple)
-                # broken when not checked
-                else: 
-                    broken.append(label_tuple)
+                # non daily
+                if has_check:
+                    if days_since <= 0:
+                        # checked today
+                        continue
+                    elif 1 <= days_since <= equal_days - 2:
+                        optional.append(label)
+                    elif days_since in (equal_days - 1, equal_days):
+                        due.append(label)
+                    else:
+                        broken.append(label)
+                else:
+                    # never checked: measure from creation
+                    if days_since <= equal_days - 2:
+                        optional.append(label)
+                    elif days_since in (equal_days - 1, equal_days):
+                        due.append(label)
+                    else:
+                        broken.append(label)
 
         return due, optional, broken
 

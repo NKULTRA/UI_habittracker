@@ -20,7 +20,7 @@ def habit_analytics_ui():
             # plot on the left side
             ui.card(
                 {"class": "analytics-plot"},
-                ui.h4("Streaks over time (active habits)"),
+                ui.h4("Streaks over time (active habits with at least one check)"),
                 ui.output_plot("streaks_plot")
             ),
 
@@ -83,10 +83,11 @@ def habit_analytics_server(input, output, session):
             # this needs to be done that we can plot the correct streak point on each date
             # broken flags are not collected here
             for d in days:
-                s, _broken = Habit.current_streak(
+                s = Habit.current_streak(
                     check_dates=days,
                     equal_days=equal_days,
                     today=d,
+                    date_created=r.get("DateCreated")
                 )
                 out.append({"date": pd.to_datetime(d), "habitID": hid, "HabitName": name, "streak": int(s)})
 
