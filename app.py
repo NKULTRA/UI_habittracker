@@ -9,10 +9,11 @@ from modules import user_selection_module, home_screen_module, edit_habits_modul
 from services.database import setup_database
 from services.state import state
 
+# sets up the database from services/database.py
 setup_database()
 
 dir = Path(os.path.abspath('')).resolve()
-static_path = dir.joinpath("static")
+static_path = dir.joinpath("static") # where are images and the stylesheet
 
 
 app_ui = ui.page_fluid(
@@ -35,10 +36,8 @@ app_ui = ui.page_fluid(
 
 def server(input, output, session):
 
-    
     initialized_modules = set()
     _last_page = reactive.Value(None)
-
 
     @output
     @render.ui
