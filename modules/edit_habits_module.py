@@ -16,9 +16,11 @@ def edit_habits_ui():
             ui.card(
                 {"class": "edit-habits-table"},
                 ui.h4("Your Habits"),
+                # table on the left of the UI
                 ui.output_data_frame("habit_table")
             ),
             ui.card(
+                # form on the right side
                 {"class": "edit-form"},
                 ui.h4("Edit / Add Habit"),
                 ui.input_text("habit_name", "Habit Name"),
@@ -43,12 +45,14 @@ def edit_habits_ui():
                     selected="Active"
                 ),
                 ui.div(
+                    # different buttons on the right side
                     {"class": "d-flex flex-wrap gap-2"},
                     ui.input_action_button("save_habit", "Save changes"),
                     ui.input_action_button("delete_habit", "Delete"),
                     ui.input_action_button("delete_user", "Delete User"),
                     ui.input_action_button("home_sc", "Back")
                 ),
+                # infotext
                 ui.div(
                     {"class": "alert alert-custom d-flex align-items-center mb-2", "role": "alert"},
                     ui.HTML(
@@ -63,21 +67,28 @@ def edit_habits_ui():
         )
     )
 
+
 def edit_habits_server(input, output, session):
 
+
     selected_habit_id = reactive.Value(None)
-    _refresh_table = reactive.Value(0)
+    _refresh_table = reactive.Value(0) # this variable is to trigger re-render / recalculate table e.g. after deletion
 
 
     def habits_raw_df():
+        """
+        creates the 'raw' dataframe, this is because for display reasons the column names 
+        needs to be renamed, for queries etc. the original dataframe remains useful
+        """
         user = state()["current_user"]
-        _ = _refresh_table()
+        _ = _refresh_table() # creates dependency, this variable is to trigger re-render / recalculate
 
         cols = ["habitID","HabitName","Periodtype","IsActive", "DateCreated", "LastChecked"]
 
         if user is None:
             return pd.DataFrame(columns=cols)
 
+        # get all habits from current user, including archived
         rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
         
         if not rows:
@@ -85,8 +96,13 @@ def edit_habits_server(input, output, session):
 
         return pd.DataFrame(rows)[cols]
 
+
     @reactive.Calc
     def habits_df():
+        """
+        creates the dataframe for the display, with renamed columns
+        builds on the raw dataframe
+        """
         raw = habits_raw_df().copy()
 
         if raw.empty:
@@ -117,19 +133,24 @@ def edit_habits_server(input, output, session):
             editable=False
             )
 
+
     def reset_form():
+        """
+        this is just a safety method to reset the form
+        because sometimes after habit deletion it throws an error when the 'old' data is still there
+        """
         selected_habit_id.set(None)
         ui.update_text("habit_name", value="")
         ui.update_select("habit_period", selected="Daily")
         ui.update_select("habit_status", selected="Active")
         ui.update_text("habit_custom", value="")
 
+
     @reactive.effect
     def _on_select_row():
         """
         handles the user click on one of the habits
         """
-
         sel = input.habit_table_selected_rows()
         df_disp = habits_df()
         df_raw  = habits_raw_df()
@@ -140,6 +161,7 @@ def edit_habits_server(input, output, session):
 
         idx = sel[0]
 
+        # reset the index, this is because after habit deletion it throws sometimes an index error
         if idx is None or idx < 0 or idx >= len(df_disp) or idx >= len(df_raw):
             reset_form()
             return
@@ -147,12 +169,14 @@ def edit_habits_server(input, output, session):
         hid = int(df_raw.iloc[idx]["habitID"])
         selected_habit_id.set(hid)
 
+        # load the data from the clicked row from the table into the form
         row = df_disp.iloc[idx]
         ui.update_text("habit_name", value=row["Habit Name"])
         ui.update_select("habit_status", selected=row["Status"])
 
         label = row.get("Period")
 
+        # handles custom - period habits
         if label not in ("Daily", "Weekly", "Monthly", "Yearly"):
             match = re.search(r"\b\d+\b", label)
             ui.update_select("habit_period", selected="Custom")
@@ -187,6 +211,7 @@ def edit_habits_server(input, output, session):
         else:
             period_str = period_sel
 
+        # to catch any errors with the selected habit or when try to write in the database
         if selected_habit_id() is None:
             try:
                 Habit.create(user.user_id, name, period_str, is_active)
@@ -213,6 +238,10 @@ def edit_habits_server(input, output, session):
     @reactive.effect
     @reactive.event(input.delete_habit)
     def _delete():
+        """
+        handles the button click on 'Delete'
+        will delete a habit and all its activities from the database
+        """
         if selected_habit_id() is None:
             ui.notification_show("Select a habit to delete.", type="warning")
             return
@@ -283,6 +312,7 @@ def edit_habits_server(input, output, session):
                     )
             )
         )
+
 
     @reactive.Effect
     @reactive.event(input.confirm_delete)

@@ -47,6 +47,7 @@ def habit_analytics_ui():
 
 def habit_analytics_server(input, output, session):
 
+
     @reactive.Calc
     def _streak_history_df():
         """
@@ -61,6 +62,7 @@ def habit_analytics_server(input, output, session):
         checks_map = get_checks_for_habits(habit_ids) 
 
         out = []
+    
         for r in rows:
             hid = r["habitID"]
             name = r["HabitName"]
@@ -77,7 +79,8 @@ def habit_analytics_server(input, output, session):
 
             days = sorted({Habit._to_date(d) for d in checks if Habit._to_date(d) is not None})
 
-            # calculate the streak for every check that happened
+            # calculate the streak for every habit for every day from this user
+            # this needs to be done that we can plot the correct streak point on each date
             # broken flags are not collected here
             for d in days:
                 s, _broken = Habit.current_streak(
@@ -92,6 +95,7 @@ def habit_analytics_server(input, output, session):
 
         df = pd.DataFrame(out).sort_values(["HabitName", "date"])
         return df
+
 
     @output
     @render.plot
@@ -130,6 +134,8 @@ def habit_analytics_server(input, output, session):
         fig, ax = plt.subplots()
 
         habits = df["HabitName"].unique()
+        # points with the same streak on the same day are overlapping
+        # jitter moves the points a little bit away from the correct point
         jitter_amount = 0.15
         for _, name in enumerate(habits):
             g = df[df["HabitName"] == name]
@@ -137,12 +143,12 @@ def habit_analytics_server(input, output, session):
             ax.plot(g["date"], g["streak"] + jitter, marker="o", label=name, linestyle='-')
 
         max_streak = int(df["streak"].max())
-        upper = max_streak + 3
+        upper = max_streak + 3 # upper limit for the y-axis
         ax.set_ylim(0, max(upper, 1))
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
         n_days = df["date"].nunique()
-        interval = max(1, n_days // 8)
+        interval = max(1, n_days // 8) # limit for the x axis
         ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
         ax.xaxis.set_minor_locator(ticker.NullLocator()) 
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%b-%d"))
@@ -153,17 +159,30 @@ def habit_analytics_server(input, output, session):
 
         return fig
 
+
     def _as_csv_bytes(df):
+        """
+        small helper function to use within the download functions
+        
+        Parameters:
+        - df, dataframe, the dataframe which should be converted to a csv file
+        """
         return df.to_csv(index=False, date_format="%Y-%m-%d").encode("utf-8")
+
 
     @output
     @render.ui
     def active_habits_button():
+        """
+        renders the Active - Habits - Download - Button
+        only clickable when there is data
+        """
         user = state()["current_user"]
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
 
         if not rows:
             return ui.layout_columns(
+                # use of a actionbutton-placeholder, because this can be disabled
                 ui.column(10, ui.input_action_button("dl_active_habits", "Active habits", disabled = True, style = "width:100%;")),
                 ui.column(10),
             )
@@ -177,6 +196,9 @@ def habit_analytics_server(input, output, session):
     @output
     @render.download(filename="active_habits.csv")
     def dl_active_habits():
+        """
+        prepares the data for the active habits csv download
+        """
         user = state()["current_user"]
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
 
@@ -187,8 +209,13 @@ def habit_analytics_server(input, output, session):
 
         yield _as_csv_bytes(df)
 
+
     @reactive.Calc
     def available_periods():
+        """
+        prepares the data for the input select,
+        returns all unique periods which have been used by the current user
+        """
         user = state()["current_user"]
 
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
@@ -204,6 +231,10 @@ def habit_analytics_server(input, output, session):
     @output
     @render.ui
     def periodicity_button():
+        """
+        renders the Habits by periodicity - Download - Button
+        only clickable when there is data
+        """
         periods = available_periods()
 
         if not periods:
@@ -217,17 +248,21 @@ def habit_analytics_server(input, output, session):
             ui.column(10, ui.input_select("analyze_habit_period", label=None, choices=periods, multiple=False)),
         )
 
+
     @output
     @render.download(filename="habits_by_periodicity.csv")
     def dl_periodicity():
-        req(input.analyze_habit_period())
+        """
+        prepares the data for the Habits by periodicity download
+        """
+        req(input.analyze_habit_period()) # needs the user to select a period
 
         user = state()["current_user"]
-        period = input.analyze_habit_period()
+        period = input.analyze_habit_period() # period selected by the user
         rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
 
         df = pd.DataFrame(rows) 
-        filtered_df = df[df["Periodtype"] == period]
+        filtered_df = df[df["Periodtype"] == period] # filter df for the user input
 
         if filtered_df is None or filtered_df.empty:
             filtered_df = pd.DataFrame(columns=[
@@ -241,6 +276,10 @@ def habit_analytics_server(input, output, session):
     @output
     @render.ui
     def archived_records_button():
+        """
+        renders the Archived + records streak - Download - Button
+        only clickable when there is data
+        """
         user = state()["current_user"]
         rows = [h.to_dict() for h in Habit.archived_list_by_user(user.user_id)]
 
@@ -255,9 +294,13 @@ def habit_analytics_server(input, output, session):
                 ui.column(10),
         )
     
+
     @output
     @render.download(filename="archived_with_record_streaks.csv")
     def dl_archived_records():
+        """
+        prepares the data for the archived habits and their record streaks
+        """
         user = state()["current_user"]
         arch = [h.to_dict() for h in Habit.archived_list_by_user(user.user_id)]
 
@@ -296,6 +339,10 @@ def habit_analytics_server(input, output, session):
     @output
     @render.ui
     def completions_button():
+        """
+        renders the completions per habit - Download - Button
+        only clickable when there is data
+        """
         user = state()["current_user"]
         rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
 
@@ -310,9 +357,13 @@ def habit_analytics_server(input, output, session):
                     ui.column(10),
         )
 
+
     @output
     @render.download(filename="completions_per_habit.csv")
     def dl_completions():
+        """
+        prepares the data for the completions per habit download
+        """
         user = state()["current_user"]
 
         habits = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
@@ -331,7 +382,7 @@ def habit_analytics_server(input, output, session):
             rows.append({
                 "habitID": hid,
                 "HabitName": a.get("HabitName"),
-                "check_count": len(checks),
+                "check_count": len(checks), # the number of checks per habit
             })
 
         df = pd.DataFrame(rows).sort_values(["HabitName", "habitID"])
@@ -341,6 +392,10 @@ def habit_analytics_server(input, output, session):
     @output
     @render.ui
     def longest_overall_button():
+        """
+        renders the Longest run overall - Download - Button
+        only clickable when there is data
+        """
         user = state()["current_user"]
         rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
 
@@ -355,9 +410,13 @@ def habit_analytics_server(input, output, session):
                     ui.column(10),
         )
 
+
     @output
     @render.download(filename="longest_run_overall.csv")
     def dl_longest_overall():
+        """
+        prepares the data for the longest run overall download
+        """
         user = state()["current_user"]
         habits = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
 
@@ -373,10 +432,11 @@ def habit_analytics_server(input, output, session):
             hid = a["habitID"]
             name = a.get("HabitName")
             try:
-                equal_days = max(1, int(a.get("EqualsToDays") or 1))
+                equal_days = a.get("EqualsToDays") or 1
             except (TypeError, ValueError):
                 equal_days = 1
 
+            # calculates the highest streak for the current habit
             s = Habit.highest_streak(
                 check_dates=sorted(set(checks_map.get(hid, []))),
                 equal_days=equal_days
@@ -394,9 +454,14 @@ def habit_analytics_server(input, output, session):
                             ascending=[False, True, True]).head(1)
         yield _as_csv_bytes(top)
 
+
     @output
     @render.ui
     def longest_habit_button():
+        """
+        renders the Longest run for a selected habit - Download - Button
+        only clickable when there is data
+        """
         user = state()["current_user"]
         rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
 
@@ -409,6 +474,7 @@ def habit_analytics_server(input, output, session):
         habit_ids = [a["habitID"] for a in rows]
         checks_map = get_checks_for_habits(habit_ids)
         
+        # when there are no checks, than there can be no streak
         if not checks_map:
             return ui.layout_columns(
                 ui.column(10, ui.input_action_button("dl_longest_for_habit", "Longest run (selected habit)", disabled = True, style = "width:100%;")),
@@ -423,16 +489,21 @@ def habit_analytics_server(input, output, session):
             ui.column(10, ui.input_select("analyze_habit_record", label=None, choices=habits)),
         )
     
+
     @output
     @render.download(filename="longest_run_selected_habit.csv")
     def dl_longest_for_habit():
+        """
+        prepares the data for the longest run selected habit download
+        """
         req(input.analyze_habit_record())
 
-        sel_habit = input.analyze_habit_record()
+        sel_habit = input.analyze_habit_record() # user selection for the habit
         user = state()["current_user"]
 
         rows = [h.to_dict() for h in Habit.full_list_by_user(user.user_id)]
-        meta = next((r for r in rows if r.get("HabitName") == sel_habit), None)
+        meta = next((r for r in rows if r.get("HabitName") == sel_habit), None) # reverse search from the selected habit name
+
         if not meta:
             yield _as_csv_bytes(pd.DataFrame(columns=["habitID","HabitName","EqualsToDays","record_streak"]))
             return

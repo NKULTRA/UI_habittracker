@@ -6,7 +6,7 @@ from shiny import render, ui, reactive
 from services.state import state, update_state
 from services.database import mark_habit_as_checked
 from models.habit import Habit
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 
 
 def home_screen_ui():
@@ -35,7 +35,9 @@ def home_screen_ui():
 
 def home_screen_server(input, output, session):
 
+
     refresh_habits = reactive.Value(0)
+
 
     @reactive.Calc
     def _habits_for_home():
@@ -43,12 +45,15 @@ def home_screen_server(input, output, session):
         creates the basis for the visible habits on the homescreen
         seperates into habits which are due today or optional habits, which can be checked but
         it isnt necessary to do so today (weekly and the due date is not yet reached)
+        also it seperates into broken habits when within the last gap between today and the equal days of this habit is no check
+        the created date doesnt play a role, because after creation the habit has its equal days to get a check
         """
         user = state()["current_user"]
         _ = refresh_habits()
         if user is None:
             return [], [], []
 
+        # get habits for the current user
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
         if not rows:
             return [], [], []
@@ -78,30 +83,40 @@ def home_screen_server(input, output, session):
 
             days_since = (today - last_dt.date()).days
 
+            # daily habits are due today or broken after one day without check
             if equal_days == 1:
+                # checked today
                 if days_since <= 0:
                     continue
+                # checked yesterday
                 elif days_since == 1:
                     due.append(label_tuple)
                 else: 
                     broken.append(label_tuple)
+            # all other habits except dailies
             else:
+                # checked today
                 if days_since <= 0:
                     continue
+                # checked somewhere within their gap, but remain optional until the last day before be broken
                 elif 1 <= days_since <= equal_days - 2:
                     optional.append(label_tuple)
+                # become due after the optional phase
                 elif days_since in (equal_days - 1, equal_days):
                     due.append(label_tuple)
+                # broken when not checked
                 else: 
                     broken.append(label_tuple)
 
         return due, optional, broken
 
+
     @output
     @render.ui
     def habits_display():
         """
-        returns the div for the output including due habits & optional habits
+        returns the div for the output including due habits, optional and broken habits
+        a habit is considered broken when there is no check in the last gap from today - days for this habit
         builds up on the tuple generated in _habits_for_home()
         """
         due, optional, broken = _habits_for_home()
@@ -121,20 +136,25 @@ def home_screen_server(input, output, session):
                 {"class": "alert alert-custom", "role": "alert"},
                 "Tip: Check the box to mark a habit complete, then click the button below to confirm."
             ),
+            # due habits
             ui.card(
                 ui.h4(f"Do these today to keep your streak ({len(due)})"),
                 ui.input_checkbox_group("home_due", None, choices=due_choices, selected=None, inline=False),
             ),
+            # optional habits
             ui.card(
                 ui.h4(f"Optional today ({len(optional)})"),
                 ui.input_checkbox_group("home_opt", None, choices=opt_choices, selected=None, inline=False),
             ),
+            # broken habits
             ui.card(
                 ui.h4(f"Broken habits ({len(broken)})"),
                 ui.input_checkbox_group("home_broken", None, choices=broken_choices, selected=None, inline=False),
             ),
+            # button at the bottom
             ui.input_action_button("home_mark_done", "Mark selected as done"),
         )
+
 
     @reactive.Effect
     @reactive.event(input.home_mark_done)
@@ -157,6 +177,7 @@ def home_screen_server(input, output, session):
         errors = []
         for hid in ids:
             try:
+                # write to the database
                 mark_habit_as_checked(hid)
             except Exception as e:
                 errors.append((hid, str(e)))
@@ -183,6 +204,7 @@ def home_screen_server(input, output, session):
             current_page="user_selection"
         )
 
+
     @reactive.Effect
     @reactive.event(input.edit_habits, ignore_init=True)
     def home_go_edit():
@@ -190,6 +212,7 @@ def home_screen_server(input, output, session):
         handles the button click on edit habits
         """
         update_state(current_page="edit_habits")
+
 
     @reactive.Effect
     @reactive.event(input.analyze_habits, ignore_init=True)

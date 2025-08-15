@@ -1,3 +1,7 @@
+"""
+Script handles the habit class with some pre-defined methods
+Methods mainly are wrapper for the database functions in database.py
+"""
 from services.database import get_active_habits, get_habit, add_habit, edit_habit, delete_habit, get_archived_habits, mark_habit_as_checked, get_checks_for_habits
 from datetime import date, datetime, timedelta
 
@@ -18,6 +22,9 @@ class Habit:
 
     @staticmethod
     def from_row(row):
+        """
+        create habit object from database row
+        """
         return Habit(
             habit_id=row["habitID"],
             user_id=row["userID"],
@@ -31,6 +38,9 @@ class Habit:
         )
 
     def to_dict(self):
+        """
+        make a dictionary from a habit, useful for most functions
+        """
         return {
             "habitID": self.habit_id,
             "userID": self.user_id,
@@ -45,6 +55,10 @@ class Habit:
 
     @staticmethod
     def full_list_by_user(user_id):
+        """
+        get all habits from the current user
+        (active + archived ones)
+        """
         rows = get_active_habits(user_id)
         rows += get_archived_habits(user_id)
         
@@ -52,26 +66,44 @@ class Habit:
 
     @staticmethod
     def list_by_user(user_id):
+        """
+        get only active habits from the current user
+        identical to the function in the user class
+        the user class was mainly used on the home screen 
+        """
         rows = get_active_habits(user_id)
         return [Habit.from_row(r) for r in rows]
 
     @staticmethod
     def archived_list_by_user(user_id):
+        """
+        get all archived habits from the current user
+        """
         rows = get_archived_habits(user_id)
         return [Habit.from_row(r) for r in rows]
 
     @staticmethod
     def get(habit_id):
+        """
+        get the information for one particular habit from its id
+        returns a habit object
+        """
         row = get_habit(habit_id)
         return Habit.from_row(row) if row else None
 
     @staticmethod
-    def create(user_id: int, habit_name, period_str, is_active):
+    def create(user_id, habit_name, period_str, is_active):
+        """
+        write a new habit to the database
+        """
         new_id = add_habit(user_id, habit_name, period_str, is_active)
         return Habit.get(new_id)
 
-    def update(self, habit_name, period_str, is_active):
 
+    def update(self, habit_name, period_str, is_active):
+        """
+        for the edit habit selection, overwrites the old information
+        """
         edit_habit(
             self.habit_id,
             habit_name=habit_name,
@@ -83,15 +115,23 @@ class Habit:
         return updated
 
     def delete(self):
+        """
+        delete the selected habit
+        """
         delete_habit(self.habit_id)
 
 
     def mark_checked(self):
+        """
+        mark the selected habit as checked and write the date to the database
+        """
         mark_habit_as_checked(self.habit_id)
       
     @classmethod
     def ongoing_streaks_by_user(cls, user_id):
-
+        """
+        calculate the current, ongoing streaks for one user
+        """
         habits = get_active_habits(user_id)
 
         if not habits:
@@ -121,6 +161,9 @@ class Habit:
 
     @staticmethod
     def _to_date(d):
+        """
+        helper function to return a data
+        """
         if d is None:
             return None
         if isinstance(d, date) and not isinstance(d, datetime):
@@ -129,18 +172,21 @@ class Habit:
 
     @staticmethod
     def current_streak(check_dates, equal_days, today):
-
+        """
+        calculate the current streak for a habit
+        """
         days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None}, reverse=True)
         if not days:
             return 0, False
 
         current_start = today - timedelta(days=equal_days - 1)
         current_has_check = any(current_start <= d <= today for d in days)
-        broken_now = not current_has_check
+        broken_now = not current_has_check # no check in the last period
 
         streak = 0
         window_end = today
 
+        # goes back in the period as long as there are checks
         while True:
             window_start = window_end - timedelta(days=equal_days - 1)
             has_check = any(window_start <= d <= window_end for d in days)
@@ -158,7 +204,7 @@ class Habit:
     @staticmethod
     def highest_streak(check_dates, equal_days):
         """
-
+        calculate the highest ever streak a habit had
         """
 
         days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None})
