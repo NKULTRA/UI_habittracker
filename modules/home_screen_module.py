@@ -184,7 +184,7 @@ def home_screen_server(input, output, session):
             return
 
         # if the user clicks the button without anything checked
-        selected = set(input.home_due() or []) | set(input.home_opt() or [])
+        selected = set(input.home_due() or []) | set(input.home_opt() or []) | set(input.home_broken() or [])
         if not selected:
             ui.notification_show("Nothing selected.", type="warning")
             return
@@ -201,6 +201,7 @@ def home_screen_server(input, output, session):
 
         ui.update_checkbox_group("home_due", selected=[])
         ui.update_checkbox_group("home_opt", selected=[])
+        ui.update_checkbox_group("home_broken", selected=[])
         refresh_habits.set(refresh_habits() + 1)
 
         if errors:
