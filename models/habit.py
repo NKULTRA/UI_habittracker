@@ -24,6 +24,9 @@ class Habit:
     def from_row(row):
         """
         create habit object from database row
+
+        Parameters:
+        - row: list, a row of a habit from the database 
         """
         return Habit(
             habit_id=row["habitID"],
@@ -58,6 +61,9 @@ class Habit:
         """
         get all habits from the current user
         (active + archived ones)
+
+        Parameters:
+        - user_id: integer, ID of the current user
         """
         rows = get_active_habits(user_id)
         rows += get_archived_habits(user_id)
@@ -69,7 +75,10 @@ class Habit:
         """
         get only active habits from the current user
         identical to the function in the user class
-        the user class was mainly used on the home screen 
+        the user class was mainly used on the home screen
+
+        Parameters:
+        - user_id: integer, ID of the current user
         """
         rows = get_active_habits(user_id)
         return [Habit.from_row(r) for r in rows]
@@ -78,6 +87,9 @@ class Habit:
     def archived_list_by_user(user_id):
         """
         get all archived habits from the current user
+
+        Parameters:
+        - user_id: integer, ID of the current user
         """
         rows = get_archived_habits(user_id)
         return [Habit.from_row(r) for r in rows]
@@ -87,6 +99,9 @@ class Habit:
         """
         get the information for one particular habit from its id
         returns a habit object
+
+        Parameters:
+        - habit_id: integer, ID of habit
         """
         row = get_habit(habit_id)
         return Habit.from_row(row) if row else None
@@ -95,6 +110,12 @@ class Habit:
     def create(user_id, habit_name, period_str, is_active):
         """
         write a new habit to the database
+
+        Parameters:
+        - user_id: integer, ID of the current user
+        - habit_name: string, Name of the Habit to create
+        - period_str: string, period of the habit
+        - is_active: boolean, archived or active habit
         """
         new_id = add_habit(user_id, habit_name, period_str, is_active)
         return Habit.get(new_id)
@@ -103,6 +124,12 @@ class Habit:
     def update(self, habit_name, period_str, is_active):
         """
         for the edit habit selection, overwrites the old information
+
+        Parameters:
+        - user_id: integer, ID of the current user
+        - habit_name: string, Name of the Habit to create
+        - period_str: string, period of the habit
+        - is_active: boolean, archived or active habit
         """
         edit_habit(
             self.habit_id,
@@ -131,6 +158,9 @@ class Habit:
     def ongoing_streaks_by_user(cls, user_id):
         """
         calculate the current, ongoing streaks for one user
+
+        Parameters:
+        - user_id: integer, ID of the current user
         """
         habits = get_active_habits(user_id)
 
@@ -162,6 +192,9 @@ class Habit:
     def _to_date(d):
         """
         helper function to return a data
+        
+        Parameters:
+        - d: string / date, a string or a date to check or format to date
         """
         if d is None:
             return None
@@ -173,6 +206,12 @@ class Habit:
     def current_streak(check_dates, equal_days, today, date_created):
         """
         calculate the current streak for a habit
+
+        Parameters:
+        - check_dates: dict, key: habit_id, value: check dates for the habit
+        - equal_days: integer, the value in days for the habit
+        - today: date, the date of today
+        - date_created: date, the date of the creation of the habit
         """
         days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None}, reverse=True)
         
@@ -213,6 +252,10 @@ class Habit:
     def highest_streak(check_dates, equal_days):
         """
         calculate the highest ever streak a habit had
+
+        Parameters:
+        - check_dates: dict, key: habit_id, value: check dates for the habit
+        - equal_days: integer, the value in days for the habit
         """
 
         days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None})

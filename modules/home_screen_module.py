@@ -35,9 +35,7 @@ def home_screen_ui():
 
 def home_screen_server(input, output, session):
 
-
     refresh_habits = reactive.Value(0)
-
 
     @reactive.Calc
     def _habits_for_home():

@@ -98,7 +98,6 @@ def _normalize_period(period_str):
 
     Parameters:
     - period_str: string, period entered by the user
-
     """
     if bool(re.fullmatch(r"\d+", period_str.strip())):
         n = int(period_str)
@@ -176,6 +175,9 @@ def new_user(user_name):
 def delete_user(user_id):
     """
     Delete a user and all related habits
+
+    Parameters:
+    - user_id: integer, ID of the user to delete
     """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
@@ -239,12 +241,13 @@ def get_users():
 
 def add_habit(user_id, habit_name, period_str, is_active):
     """
-    Adds a row to the given table.
+    Adds a row to the habits table
 
     Parameters:
-    - table: str, the table name
-    - entry: dict, mapping of column names to values, e.g.
-             {"HabitName": "Read", "Is_Active": 1, ...}
+    - user_id: integer, ID of the current user
+    - habit_name: string, Name of the habit
+    - period_str: string, Period of the habit
+    - is_active: boolean, active or archived - in theory the user can add new archived habits
     """
     label, days = _normalize_period(period_str)
     periodtype_id = get_or_create_periodtype(label, days)
@@ -393,7 +396,7 @@ def get_habit(habit_id):
 def get_active_habits(user_id):
     """
     Return all habit rows joined with periodtypes
-    so a Habit object can be built.
+    so a Habit object can be built
 
     Parameters:
     - user_id: integer, ID of the current user

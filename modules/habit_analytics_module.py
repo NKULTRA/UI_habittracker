@@ -47,7 +47,6 @@ def habit_analytics_ui():
 
 def habit_analytics_server(input, output, session):
 
-
     @reactive.Calc
     def _streak_history_df():
         """

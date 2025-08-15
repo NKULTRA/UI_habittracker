@@ -70,10 +70,8 @@ def edit_habits_ui():
 
 def edit_habits_server(input, output, session):
 
-
     selected_habit_id = reactive.Value(None)
     _refresh_table = reactive.Value(0) # this variable is to trigger re-render / recalculate table e.g. after deletion
-
 
     def habits_raw_df():
         """
