@@ -105,7 +105,8 @@ def habit_analytics_server(input, output, session):
                 s = Habit.current_streak(
                     check_dates=days,
                     equal_days=equal_days,
-                    today=d.date()
+                    today=d.date(),
+                    created_date=r["DateCreated"]
                 )
                 out.append({
                     "date": pd.to_datetime(d.date()),
@@ -158,6 +159,7 @@ def habit_analytics_server(input, output, session):
         fig, ax = plt.subplots()
 
         habits = df["HabitName"].unique()
+
         # points with the same streak on the same day are overlapping
         # jitter moves the points a little bit away from the correct point
         jitter_amount = 0.15
@@ -166,16 +168,25 @@ def habit_analytics_server(input, output, session):
             jitter = np.random.uniform(-jitter_amount, jitter_amount, size=len(g))
             ax.plot(g["date"], g["streak"] + jitter, marker="o", label=name, linestyle='-')
 
+        # Bind x-limits, with one habit on the first day it leads to errors
+        xmin = df["date"].min()
+        xmax = df["date"].max()
+        if xmin == xmax:
+            pad = pd.Timedelta(days=3)
+            ax.set_xlim(xmin - pad, xmax + pad)
+        else:
+            ax.set_xlim(xmin, xmax)
+
         max_streak = int(df["streak"].max())
-        upper = max_streak + 3 # upper limit for the y-axis
+        upper = max_streak + 3  # upper limit for the y-axis
         ax.set_ylim(0, max(upper, 1))
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
-        n_days = df["date"].nunique()
-        interval = max(1, n_days // 8) # limit for the x axis
-        ax.xaxis.set_major_locator(mdates.DayLocator(interval=interval))
-        ax.xaxis.set_minor_locator(ticker.NullLocator()) 
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b-%d"))
+        # X-axis: adaptive locator/formatter to avoid too many ticks
+        locator = mdates.AutoDateLocator(minticks=4, maxticks=8)
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
+        ax.xaxis.set_minor_locator(ticker.NullLocator())
         fig.autofmt_xdate(rotation=0)
 
         ax.legend(loc="best")

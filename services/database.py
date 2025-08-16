@@ -58,10 +58,9 @@ def setup_database():
             CREATE TABLE IF NOT EXISTS activities (
                 activityID INTEGER PRIMARY KEY AUTOINCREMENT,
                 habitID INTEGER NOT NULL,
-                activity_type TEXT NOT NULL CHECK (activity_type IN (
-                        'check','create','edit','archive','unarchive','rename','period_change')),
                 ActivityDate TIMESTAMP DEFAULT (datetime('now','localtime')),
-                FOREIGN KEY (habitID) REFERENCES habits(habitID)
+                FOREIGN KEY (habitID) REFERENCES habits(habitID),
+                UNIQUE(habitID, ActivityDate)
             )
         """)
 
@@ -82,8 +81,8 @@ def setup_database():
         """)
 
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_activities_habit_type_date
-            ON activities(habitID, activity_type, ActivityDate)
+            CREATE INDEX IF NOT EXISTS idx_activities_habit_date
+            ON activities(habitID, ActivityDate)
         """)
 
         conn.commit()
@@ -260,11 +259,6 @@ def add_habit(user_id, habit_name, period_str, is_active):
             VALUES (?, ?, ?, ?, NULL)
         """, (user_id, periodtype_id, habit_name, int(is_active)))
         hid = cursor.lastrowid
-
-        cursor.execute("""
-            INSERT INTO activities (habitID, activity_type)
-            VALUES (?, 'create')
-        """, (hid,))
 
         conn.commit()
         return hid
@@ -470,8 +464,8 @@ def mark_habit_as_checked(habit_id):
         cursor = conn.cursor()
 
         cursor.execute("""
-            INSERT INTO activities (habitID, activity_type, ActivityDate)
-            VALUES (?, 'check', ?)
+            INSERT INTO activities (habitID, ActivityDate)
+            VALUES (?, ?)
         """, (habit_id, now))
 
         cursor.execute("""
@@ -496,18 +490,19 @@ def get_checks_for_habits(habit_id_list):
 
         cursor.execute(
             f"""
-            SELECT habitID, DATE(ActivityDate) AS d
+            SELECT 
+                habitID, 
+                DATE(ActivityDate) AS date
             FROM activities
             WHERE habitID IN ({",".join(["?"] * len(habit_id_list))})
-              AND activity_type = 'check'
-            GROUP BY habitID, d
-            ORDER BY habitID, d DESC
+            GROUP BY habitID, date
+            ORDER BY habitID, date DESC
             """,
             habit_id_list,
         )
 
         out = defaultdict(list)
         for row in cursor.fetchall():
-            out[row["habitID"]].append(row["d"])
+            out[row["habitID"]].append(row["date"])
 
         return {hid: out.get(hid, []) for hid in habit_id_list}
