@@ -121,7 +121,7 @@ def dl_longest_for_habit(rows, selected_habit, equal_days, checks_map):
     
     return df
 
-
+# ------------- sample data -------------------
 today = date(2025, 8, 16)
 rows = [
         {
