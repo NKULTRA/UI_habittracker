@@ -67,27 +67,16 @@ def home_screen_server(input, output, session):
             hid  = r["habitID"]
             name = r["HabitName"]
             streak = int(streak_map.get(hid, 0))
-            equal_days = int(r.get("EqualsToDays") or 1)
+            equal_days = int(r.get("EqualsToDays"))
             last_checked = r.get("LastChecked")
             date_created = r.get("DateCreated")
 
-            try:
-                last_dt = last_checked if isinstance(last_checked, datetime) else (
-                    datetime.fromisoformat(str(last_checked)) if last_checked else None
-                )
-            except Exception:
-                last_dt = None
+            last_d    = datetime.fromisoformat(str(last_checked)).date() if last_checked else None
+            created_d = datetime.fromisoformat(str(date_created)).date() if date_created else None
 
-            try:
-                created_dt = last_checked if isinstance(date_created, datetime) else (
-                    datetime.fromisoformat(str(date_created)) if date_created else None
-                )
-            except Exception:
-                created_dt = None
-
-            has_check = last_dt is not None
-            base_dt = last_dt or created_dt or datetime.combine(today, datetime.min.time())
-            days_since = (today - base_dt.date()).days
+            has_check = last_d is not None
+            base_d = last_d or created_d or today 
+            days_since = (today - base_d).days
 
             label = (name, hid, streak)
 

@@ -1,5 +1,5 @@
 periodtypeID,Periodtype,EqualsToDays
 1,Daily,1
 2,Weekly,7
-3,Custom,14
-4,Custom,10
+3,every 14 days,14
+4,every 10 days,10

@@ -211,7 +211,7 @@ class Habit:
         - check_dates: dict, key: habit_id, value: check dates for the habit
         - equal_days: integer, the value in days for the habit
         - today: date, the date of today
-        - created_date: date, the date of the habit created
+        - created_date: string, the date of the habit created from the database
         """
         days = sorted([Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None], reverse=True)
         created_date = datetime.fromisoformat(str(created_date)).date()
