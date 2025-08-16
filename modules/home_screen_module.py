@@ -58,7 +58,6 @@ def home_screen_server(input, output, session):
 
         today = date.today()
 
-        # current streaks + "broken now" flag (no check in current window)
         streak_map = Habit.ongoing_streaks_by_user(user.user_id)
 
         due, optional, broken = [], [], []

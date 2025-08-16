@@ -213,26 +213,33 @@ class Habit:
         - today: date, the date of today
         - created_date: string, the date of the habit created from the database
         """
-        days = sorted([Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None], reverse=True)
-        created_date = datetime.fromisoformat(str(created_date)).date()
-        end = today
-        start = end - timedelta(days=equal_days - 1)
+        days = sorted([Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None])
+        if not days:
+            return 0
+        
+        if (today - days[-1]).days > equal_days:
+            return 0
 
         streak = 0
+        end = today
+        i = len(days) - 1
 
-        while True:
-            if created_date and end < created_date:
+        while i >= 0:
+            while i >= 0 and days[i] > end:
+                i -= 1
+            if i < 0:
                 break
 
-            if any(start <= d <= end for d in days):
-                streak += 1
-                end = start - timedelta(days=1)
-                start = end - timedelta(days=equal_days - 1)
-            else:
+            window_start = end - timedelta(days=equal_days - 1)
+            if days[i] < window_start:
                 break
+            streak += 1
+
+            end = days[i] - timedelta(days=1)
+            i -= 1
 
         return streak
-            
+                
     
     @staticmethod
     def highest_streak(check_dates, equal_days):
