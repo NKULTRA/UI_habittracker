@@ -28,21 +28,6 @@ def test_current_streak(check_days, equal_days, today, created_date, expected):
     )
     assert s == expected
 
-def rows():
-    return [
-        {
-            "habitID": 1,
-            "userID": 1,
-            "HabitName": "Meditate",
-            "periodtypeID": 4,
-            "IsActive": 1,
-            "DateCreated": "2025-07-01",
-            "LastChecked": "2025-08-11",
-            "Periodtype": "every 10 days",
-            "EqualsToDays": 10,
-        }
-    ]
-
 
 def build_streak_history(equal_days, rows, today, checks_map):
 
