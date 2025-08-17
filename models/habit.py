@@ -253,23 +253,28 @@ class Habit:
         if not days:
             return 0
 
-        min_day = days[0]
-        window_end = days[-1]  
-
         best = 0
-        cur = 0
+        n = len(days)
 
-        while window_end >= min_day:
-            window_start = window_end - timedelta(days=equal_days - 1)
+        for k in range(n):    
+            end = days[k]
+            cnt = 0
+            j = k
 
-            has_check = any(window_start <= d <= window_end for d in days)
-            if has_check:
-                cur += 1
-                if cur > best:
-                    best = cur
-            else:
-                cur = 0
+            while j >= 0:
+                window_start = end - timedelta(days=equal_days - 1)
 
-            window_end = window_start - timedelta(days=1)
+                if days[j] < window_start:
+                    break
+
+                cnt += 1
+                end = days[j] - timedelta(days=1)
+                j -= 1
+
+                while j >= 0 and days[j] > end:
+                    j -= 1
+
+            if cnt > best:
+                best = cnt
 
         return best
