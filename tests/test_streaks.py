@@ -9,22 +9,21 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from models.habit import Habit
 
 @pytest.mark.parametrize(
-    "check_days,equal_days,today,created_date,expected",
+    "check_days,equal_days,today,expected",
     [
-        ([], 1, date(2025,8,16),date(2025,8,16), 0),
-        ([date(2025,8,16)], 1, date(2025,8,16),date(2025,8,16), 1),
-        ([date(2025,8,15), date(2025,8,16)], 1, date(2025,8,16),date(2025,8,15), 2),
-        ([date(2025,8,1), date(2025,8,8), date(2025,8,15)], 7, date(2025,8,16),date(2025,8,1), 3),
-        ([date(2025,8,1), date(2025,8,12)], 7, date(2025,8,20), date(2025,8,1), 0),
+        ([], 1, date(2025,8,16), 0),
+        ([date(2025,8,16)], 1, date(2025,8,16), 1),
+        ([date(2025,8,15), date(2025,8,16)], 1, date(2025,8,16), 2),
+        ([date(2025,8,1), date(2025,8,8), date(2025,8,15)], 7, date(2025,8,16), 3),
+        ([date(2025,8,1), date(2025,8,12)], 7, date(2025,8,20), 0),
     ],
 )
 
-def test_current_streak(check_days, equal_days, today, created_date, expected):
+def test_current_streak(check_days, equal_days, today, expected):
     s = Habit.current_streak(
         check_dates=check_days,
         equal_days=equal_days,
-        today=today,
-        created_date=created_date
+        today=today
     )
     assert s == expected
 
@@ -59,8 +58,7 @@ def build_streak_history(equal_days, rows, today, checks_map):
             s = Habit.current_streak(
                 check_dates=days,
                 equal_days=equal_days,
-                today=d.date(),
-                created_date=r["DateCreated"]
+                today=d.date()
             )
             out.append({
                 "date": pd.to_datetime(d.date()),
