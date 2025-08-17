@@ -181,8 +181,7 @@ class Habit:
             streak = cls.current_streak(
                 check_dates=checks,
                 equal_days=days,        
-                today=today,
-                created_date=h["DateCreated"]
+                today=today
             )
             out[hid] = streak
 
@@ -203,7 +202,7 @@ class Habit:
         return datetime.fromisoformat(str(d)).date()
 
     @staticmethod
-    def current_streak(check_dates, equal_days, today, created_date):
+    def current_streak(check_dates, equal_days, today):
         """
         calculate the current streak for a habit
 
@@ -211,7 +210,6 @@ class Habit:
         - check_dates: dict, key: habit_id, value: check dates for the habit
         - equal_days: integer, the value in days for the habit
         - today: date, the date of today
-        - created_date: string, the date of the habit created from the database
         """
         days = sorted([Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None])
         if not days:
@@ -250,7 +248,6 @@ class Habit:
         - check_dates: dict, key: habit_id, value: check dates for the habit
         - equal_days: integer, the value in days for the habit
         """
-
         days = sorted({Habit._to_date(d) for d in check_dates if Habit._to_date(d) is not None})
 
         if not days:

@@ -105,8 +105,7 @@ def habit_analytics_server(input, output, session):
                 s = Habit.current_streak(
                     check_dates=days,
                     equal_days=equal_days,
-                    today=d.date(),
-                    created_date=r["DateCreated"]
+                    today=d.date()
                 )
                 out.append({
                     "date": pd.to_datetime(d.date()),
