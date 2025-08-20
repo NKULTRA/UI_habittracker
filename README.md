@@ -88,3 +88,4 @@ contains two scripts with test-functions, to test the most important functions f
 ### other
 - app.py is the main starting script
 - requirements.txt gives the used libraries and their versions
+- config.py handles the path to the database
