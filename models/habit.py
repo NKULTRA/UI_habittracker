@@ -215,13 +215,17 @@ class Habit:
         if not days:
             return 0
         
+        # if today - the last checked date is greater than the days of the habits period, the streak is 0
         if (today - days[-1]).days > equal_days:
             return 0
 
         streak = 0
         end = today
-        i = len(days) - 1
+        i = len(days) - 1 # amount of checkdates
 
+        # start from the last check date and go through each gap, check if streak was broken
+        # return either the current streak or 0 when there was none
+        # a streak is fulfilled when the period days never were passed, too less days still count to the streak
         while i >= 0:
             while i >= 0 and days[i] > end:
                 i -= 1
@@ -256,6 +260,7 @@ class Habit:
         best = 0
         n = len(days)
 
+        # similar to the current streak algorithm, but goes through all checks to calculate the highest ever reached
         for k in range(n):    
             end = days[k]
             cnt = 0

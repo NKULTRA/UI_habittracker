@@ -1,7 +1,6 @@
 """
 Main starting script for the application
 """
-import os
 from pathlib import Path
 
 from shiny import App, ui, render, reactive
@@ -12,8 +11,8 @@ from services.state import state
 # sets up the database from services/database.py
 setup_database()
 
-dir = Path(os.path.abspath('')).resolve()
-static_path = dir.joinpath("static") # where are images and the stylesheet
+dir = Path.cwd().resolve() # current working directory
+static_path = dir.joinpath("static") # folder with images and the stylesheet
 
 
 app_ui = ui.page_fluid(

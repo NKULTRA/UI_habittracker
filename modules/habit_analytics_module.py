@@ -52,6 +52,11 @@ def habit_analytics_server(input, output, session):
     def _streak_history_df():
         """
         calculates the streak history for the plot for all active habits
+
+        returns a dictionary for every habit with the streak for each day,
+        this needs to be done this way to ensure a line
+        - to reduce the amount of calculations the MAX_DAYS variable can be set and it won't calculate any further from today
+        - uses the current streak algorithm from the Habit class
         """
         user = state()["current_user"] 
         rows = [h.to_dict() for h in Habit.list_by_user(user.user_id)]
@@ -99,9 +104,11 @@ def habit_analytics_server(input, output, session):
             if start_date < min_start:
                 start_date = min_start
 
+            # create a daterange to go through
             date_range = pd.date_range(start=start_date, end=today, freq="D")
 
             for d in date_range:
+                # calculate the streak for each day
                 s = Habit.current_streak(
                     check_dates=days,
                     equal_days=equal_days,
@@ -167,7 +174,7 @@ def habit_analytics_server(input, output, session):
             jitter = np.random.uniform(-jitter_amount, jitter_amount, size=len(g))
             ax.plot(g["date"], g["streak"] + jitter, marker="o", label=name, linestyle='-')
 
-        # Bind x-limits, with one habit on the first day it leads to errors
+        # x-axis limits, with only one existing habit, on its first day it leads to errors
         xmin = df["date"].min()
         xmax = df["date"].max()
         if xmin == xmax:

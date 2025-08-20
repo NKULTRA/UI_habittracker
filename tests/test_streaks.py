@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from models.habit import Habit
 
+# sample data
 @pytest.mark.parametrize(
     "check_days,equal_days,today,expected",
     [
@@ -73,6 +74,7 @@ def build_streak_history(equal_days, rows, today, checks_map):
 
     return df
 
+# sample data to test
 def test_meditate():
     
     rows = [

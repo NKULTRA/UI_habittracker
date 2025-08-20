@@ -44,7 +44,10 @@ def home_screen_server(input, output, session):
         seperates into habits which are due today or optional habits, which can be checked but
         it isnt necessary to do so today (weekly and the due date is not yet reached)
         also it seperates into broken habits when within the last gap between today and the equal days of this habit is no check
-        the created date doesnt play a role, because after creation the habit has its equal days to get a check
+
+        the algorithm looks for check between today and either the creation date or the last checked date, the gap between the last
+        check and today is the basis for the sort into one of the containers
+        - optional habits are dependent on the point of time they are currently in their allowed check window (= period)
         """
         user = state()["current_user"]
         _ = refresh_habits()

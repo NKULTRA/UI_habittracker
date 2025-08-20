@@ -111,4 +111,4 @@ def user_selection_server(input, output, session):
         else:
             new_user = User.create(name)
             update_state(refresh_user =+ 1) # update for dependency
-            update_state(current_user=new_user, current_page="home_screen")
+            update_state(current_user=new_user, current_page="home_screen") #set user and current page to homescreen
